@@ -28,7 +28,7 @@ def get_wish(wish_id):
     try:
         return jsonify({'wish': wishes[wish_id]})
     except IndexError:
-        return jsonify({'error': 'index not found'})
+        abort(404)
 
 
 @app.route('/')

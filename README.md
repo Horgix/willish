@@ -628,3 +628,47 @@ Date: Wed, 03 May 2017 14:03:13 GMT
 }
 ```
 
+But it's not really HTTP compliant... 200 code for an error...
+
+Flask to the rescue! `from flask import abort`
+
+Change
+
+```
+return jsonify({'error': 'index not found'})
+```
+
+into
+
+```
+abort(404)
+```
+
+and you're done :)
+
+```
+└#master> ./willish.py
+
+ * Running on http://127.0.0.1:5000/ (Press CTRL+C to quit)
+ * Restarting with stat
+ * Debugger is active!
+ * Debugger PIN: 191-272-850
+127.0.0.1 - - [03/May/2017 16:16:51] "GET /wishes/2 HTTP/1.1" 404 -
+``
+
+```
+└> curl -i localhost:5000/wishes/2                                                                   16:03 Wed,May 03┘
+HTTP/1.0 404 NOT FOUND
+Content-Type: text/html
+Content-Length: 233
+Server: Werkzeug/0.12.1 Python/3.6.0
+Date: Wed, 03 May 2017 14:16:51 GMT
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+<title>404 Not Found</title>
+<h1>Not Found</h1>
+<p>The requested URL was not found on the server.  If you entered the URL manually please check your spelling and try again.</p>
+```
+
+Yay, 404
+
