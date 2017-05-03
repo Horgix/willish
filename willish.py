@@ -1,5 +1,5 @@
 #! venv/bin/python
-from flask import Flask
+from flask import Flask, jsonify
 
 app = Flask(__name__)
 
@@ -17,6 +17,11 @@ wishes = [
             'acquired': False
             }
         ]
+
+
+@app.route('/wishes', methods=['GET'])
+def get_wishes():
+    return jsonify({'wishes': wishes})
 
 @app.route('/')
 def index():

@@ -105,3 +105,58 @@ chmod +x willish.py
 └> curl localhost:5000
 Hello, World!%
 ```
+
+# GET /wishes
+
+```
+└> curl -i localhost:5000/wishes                                                               [148]~15:37 Wed,May 03┘
+HTTP/1.0 200 OK
+Content-Type: application/json
+Content-Length: 357
+Server: Werkzeug/0.12.1 Python/3.6.0
+Date: Wed, 03 May 2017 13:37:17 GMT
+
+{
+  "wishes": [
+    {
+      "acquired": true, 
+      "id": 1, 
+      "link": "https://duck-duck-go.myshopify.com/collections/frontpage/products/duckduckgo-t-shirt", 
+      "name": "DuckDuckGo t-shirt"
+    }, 
+    {
+      "acquired": false, 
+      "id": 2, 
+      "link": "https://supporters.eff.org/shop/eff-lapel-pin", 
+      "name": "EFF pin"
+    }
+  ]
+}
+```
+
+```
+└#master> ./willish.py
+ * Running on http://127.0.0.1:5000/ (Press CTRL+C to quit)
+ * Restarting with stat
+ * Debugger is active!
+ * Debugger PIN: 191-272-850
+127.0.0.1 - - [03/May/2017 15:37:03] "GET /wishes/1 HTTP/1.1" 404 -
+127.0.0.1 - - [03/May/2017 15:37:17] "GET /wishes HTTP/1.1" 200 -
+```
+
+
+btw 404
+
+```
+└> curl -i localhost:5000/wishes/1                                                               [7]~15:36 Wed,May 03┘
+HTTP/1.0 404 NOT FOUND
+Content-Type: text/html
+Content-Length: 233
+Server: Werkzeug/0.12.1 Python/3.6.0
+Date: Wed, 03 May 2017 13:37:03 GMT
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+<title>404 Not Found</title>
+<h1>Not Found</h1>
+<p>The requested URL was not found on the server.  If you entered the URL manually please check your spelling and try again.</p>
+```
