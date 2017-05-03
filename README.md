@@ -590,3 +590,41 @@ One more reason to tune errors sent by Flask when working on an API!
 
 Why did it fail?
 Well, we aren't checking that the ID is valid.
+
+
+# Adding error handling on this
+
+```
+@app.route('/wishes/<int:wish_id>', methods=['GET'])
+def get_wish(wish_id):
+    try:
+        return jsonify({'wish': wishes[wish_id]})
+    except IndexError:
+        return jsonify({'error': 'index not found'})
+```
+
+```
+└#master> ./willish.py
+
+ * Running on http://127.0.0.1:5000/ (Press CTRL+C to quit)
+ * Restarting with stat
+ * Debugger is active!
+ * Debugger PIN: 191-272-850
+127.0.0.1 - - [03/May/2017 16:03:13] "GET /wishes/2 HTTP/1.1" 200 -
+```
+
+And it's working :
+
+```
+└> curl -i localhost:5000/wishes/2
+HTTP/1.0 200 OK
+Content-Type: application/json
+Content-Length: 33
+Server: Werkzeug/0.12.1 Python/3.6.0
+Date: Wed, 03 May 2017 14:03:13 GMT
+
+{
+  "error": "index not found"
+}
+```
+

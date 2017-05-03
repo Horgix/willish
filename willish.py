@@ -25,7 +25,11 @@ def get_wishes():
 
 @app.route('/wishes/<int:wish_id>', methods=['GET'])
 def get_wish(wish_id):
-    return jsonify({'wish': wishes[wish_id]})
+    try:
+        return jsonify({'wish': wishes[wish_id]})
+    except IndexError:
+        return jsonify({'error': 'index not found'})
+
 
 @app.route('/')
 def index():
