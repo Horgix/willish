@@ -106,7 +106,12 @@ chmod +x willish.py
 Hello, World!%
 ```
 
+http://flask.pocoo.org/docs/0.12/quickstart/#http-methods
+and it's already handling HEAD for us :D
+
 # GET /wishes
+
+Add details about `curl -i`
 
 ```
 └> curl -i localhost:5000/wishes                                                               [148]~15:37 Wed,May 03┘
@@ -162,6 +167,9 @@ Date: Wed, 03 May 2017 13:37:03 GMT
 ```
 
 # Add GET /wishes/<wish_id>
+
+
+http://flask.pocoo.org/docs/0.12/quickstart/#variable-rules
 
 ```
 @app.route('/wishes/<int:wish_id>', methods=['GET'])
@@ -630,6 +638,8 @@ Date: Wed, 03 May 2017 14:03:13 GMT
 
 But it's not really HTTP compliant... 200 code for an error...
 
+# Handling error better
+
 Flask to the rescue! `from flask import abort`
 
 Change
@@ -654,7 +664,7 @@ and you're done :)
  * Debugger is active!
  * Debugger PIN: 191-272-850
 127.0.0.1 - - [03/May/2017 16:16:51] "GET /wishes/2 HTTP/1.1" 404 -
-``
+```
 
 ```
 └> curl -i localhost:5000/wishes/2                                                                   16:03 Wed,May 03┘
@@ -672,3 +682,84 @@ Date: Wed, 03 May 2017 14:16:51 GMT
 
 Yay, 404
 
+But sadly, it's still returning HTML, which is bad for a REST API.
+
+# JSON 404
+
+Thanks to flask, we can override the error handler that gets called by
+`abort()` :)
+
+```
+@app.errorhandler(404)
+def not_found(error):
+    return jsonify({'error': 'Not found'})
+```
+
+which seems to be sending json:
+
+```
+└> curl -i localhost:5000/wishes/2
+HTTP/1.0 200 OK
+Content-Type: application/json
+Content-Length: 27
+Server: Werkzeug/0.12.1 Python/3.6.0
+Date: Wed, 03 May 2017 14:39:25 GMT
+
+{
+  "error": "Not found"
+}
+```
+
+But we lost the 404 status again :(
+How can we send it?
+
+We'll be using `make_response` in our error handler as suggested in
+<http://flask.pocoo.org/docs/0.12/quickstart/#about-responses>
+
+Documentation:
+<http://flask.pocoo.org/docs/0.12/api/#flask.Flask.make_response>
+
+
+
+```
+@app.errorhandler(404)
+def not_found(error):
+    return make_response(jsonify({'error': 'Not found'}), 404)
+```
+
+and adding the `make_response` to the `from flask import ...` stuff
+
+
+and it's working fine :
+
+```
+└> curl -i localhost:5000/wishes/2
+HTTP/1.0 404 NOT FOUND
+Content-Type: application/json
+Content-Length: 27
+Server: Werkzeug/0.12.1 Python/3.6.0
+Date: Wed, 03 May 2017 15:42:33 GMT
+
+{
+  "error": "Not found"
+}
+```
+
+Note the HTTP status code, the content type and the body. No longer 200, no
+longer HTML, win !
+
+For more informations on error handling and JSON outputs:
+
+- <http://flask.pocoo.org/docs/0.12/patterns/apierrors/>
+- <http://flask.pocoo.org/snippets/83/>
+
+We'll come back on that later I guess.
+
+
+
+
+
+# Misc
+
+What about defining some `status.HTTP_NOT_FOUND` to 404 to ensure we get type
+right ?

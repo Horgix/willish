@@ -1,5 +1,5 @@
 #! venv/bin/python
-from flask import Flask, jsonify, abort
+from flask import Flask, jsonify, abort, make_response
 
 app = Flask(__name__)
 
@@ -30,6 +30,9 @@ def get_wish(wish_id):
     except IndexError:
         abort(404)
 
+@app.errorhandler(404)
+def not_found(error):
+    return make_response(jsonify({'error': 'Not found'}), 404)
 
 @app.route('/')
 def index():
