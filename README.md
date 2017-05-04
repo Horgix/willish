@@ -39,7 +39,7 @@ accepted-content, etc., not in URL
 
 # What's a wish?
 
-- `id`: Numeric. Unique identifier.
+- `id`: Numeric. Unique identifier. Generated.
 - `name`: String. Wish item name.
 - `link`: String. Link to somewhere the wish can be found.
 - `acquired`: Bool. wish obtention status.
@@ -755,11 +755,380 @@ For more informations on error handling and JSON outputs:
 
 We'll come back on that later I guess.
 
+# POST
+
+This will be a long part, we're entering the really useful part!
+
+First we need to ask ourselves this question : what is mandatory in order to
+create a wish ? Reminder, we handle the following attributes right now :
+
+- id : this will be generated automatically so we'll not take it from POST
+  request data
+- name : having no name a link probably makes sense
+- link : having a link but no name probably makes sense too
+- acquired : we'll set it to False at creation time, this will not be taken
+  either from POST request data. Would be non sense to add an item we already
+  acquired to an
+
+Sooo, at the end, we require either name or link, and we should fail if none of
+them is in the request. For the rest/REST (what a joke.), it's up to us to
+decide what we do with parameter we don't need, i.e. if a client send us a
+"cake_taste" field or the "id" or "acquired" field which we'll not take into
+account anyway. Should we send an error, forcing the client to send perfectly
+conform requests ? Should we just ignore it ? I'm going for the ignore thing,
+it will be way easier, but we'll have to document it with our API so people can
+expect it.
+
+## Implem
+
+- add request to from flask import ...
+
+Request doc : http://flask.pocoo.org/docs/0.12/api/#incoming-request-data
+
+### First
+
+Let's implement something really dumb: we'll just check that provided JSON is
+valid before trying to do anything with the json data.
+
+Flask provides the `is_json` field with following description
+<http://flask.pocoo.org/docs/0.12/api/#flask.Request.is_json> :
+
+> Indicates if this request is JSON or not. By default a request is considered
+> to include JSON data if the mimetype is `application/json` or
+> `application/*+json`.
+
+```
+@app.route('/wishes', methods=['POST'])
+def add_wish():
+    print(request.is_json)
+    return jsonify({})
+```
+
+Let's see how it behaves :
+
+```
+└> curl -i -H "Content-Type: application/json" -X POST -d '{"name":"New keyboard"}' http://localhost:5000/wishes
+HTTP/1.0 200 OK
+Content-Type: application/json
+Content-Length: 3
+Server: Werkzeug/0.12.1 Python/3.6.0
+Date: Thu, 04 May 2017 16:56:17 GMT
+
+{}
+```
 
 
+```
+└#master> ./willish.py
+ * Running on http://127.0.0.1:5000/ (Press CTRL+C to quit)
+ * Restarting with stat
+ * Debugger is active!
+ * Debugger PIN: 191-272-850
+True
+127.0.0.1 - - [04/May/2017 18:56:17] "POST /wishes HTTP/1.1" 200 -
+```
+
+Yay, fine! `is_json` returns True.
+
+However, I'm a bit worried about the "content-type" based check. What if
+someone sends us a request with `application/json` `Content-Type` but without a
+real JSON object in data ? Or an invalid one? Let's try!
+
+```
+└> curl -i -H "Content-Type: application/json" -X POST -d '{"name":"New keyboard' http://localhost:5000/wishes
+HTTP/1.0 200 OK
+Content-Type: application/json
+Content-Length: 3
+Server: Werkzeug/0.12.1 Python/3.6.0
+Date: Thu, 04 May 2017 16:54:29 GMT
+
+{}
+```
+
+```
+└#master> ./willish.py
+ * Running on http://127.0.0.1:5000/ (Press CTRL+C to quit)
+ * Restarting with stat
+ * Debugger is active!
+ * Debugger PIN: 191-272-850
+True
+127.0.0.1 - - [04/May/2017 18:58:04] "POST /wishes HTTP/1.1" 200 -
+```
+
+Well, `True` too :(
+
+But there is another field, `json`, that can saves us !
+<http://flask.pocoo.org/docs/0.12/api/#flask.Request.json>
+
+
+> If the mimetype is application/json this will contain the parsed JSON data. Otherwise this will be None.
+>
+> The get_json() method should be used instead.
+
+Ok, we'll use `get_json()` to access fields, but  looks like we can use `json`
+to assert for parseable json.
+
+Let's verify that.
+
+```
+@app.route('/wishes', methods=['POST'])
+def add_wish():
+    print(request.json)
+    return jsonify({})
+```
+
+```
+└> curl -i -H "Content-Type: application/json" -X POST -d '{"name":"New keyboard"}' http://localhost:5000/wishes
+HTTP/1.0 200 OK
+Content-Type: application/json
+Content-Length: 3
+Server: Werkzeug/0.12.1 Python/3.6.0
+Date: Thu, 04 May 2017 17:02:42 GMT
+
+{}
+```
+
+```
+└#master> ./willish.py
+ * Running on http://127.0.0.1:5000/ (Press CTRL+C to quit)
+ * Restarting with stat
+ * Debugger is active!
+ * Debugger PIN: 191-272-850
+{'name': 'New keyboard'}
+127.0.0.1 - - [04/May/2017 19:02:42] "POST /wishes HTTP/1.1" 200 -
+```
+
+Ok so valid JSON works as expected.
+Let's try invalid JSON
+
+```
+└> curl -i -H "Content-Type: application/json" -X POST -d '{"name":"New keyboard' http://localhost:5000/wishes
+HTTP/1.0 400 BAD REQUEST
+Content-Type: text/html
+Content-Length: 203
+Server: Werkzeug/0.12.1 Python/3.6.0
+Date: Thu, 04 May 2017 17:03:34 GMT
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+<title>400 Bad Request</title>
+<h1>Bad Request</h1>
+<p>Failed to decode JSON object: Unterminated string starting at: line 1 column 9 (char 8)</p>
+```
+
+```
+└#master> ./willish.py
+ * Running on http://127.0.0.1:5000/ (Press CTRL+C to quit)
+ * Restarting with stat
+ * Debugger is active!
+ * Debugger PIN: 191-272-850
+127.0.0.1 - - [04/May/2017 19:03:34] "POST /wishes HTTP/1.1" 400 -
+```
+
+Nice!
+However, once more, we're getting HTML body, just like for the 404 stuff. You
+know how this ends up; let's override the handler for the 400 error !
+
+http://flask.pocoo.org/docs/0.12/errorhandling/#registering
+
+
+```
+@app.errorhandler(400)
+def bad_request(error):
+    return make_response(jsonify({'error': 'Bad Request'}), 400)
+```
+
+```
+└> curl -i -H "Content-Type: application/json" -X POST -d '{"name":"New keyboard' http://localhost:5000/wishes
+HTTP/1.0 400 BAD REQUEST
+Content-Type: application/json
+Content-Length: 29
+Server: Werkzeug/0.12.1 Python/3.6.0
+Date: Thu, 04 May 2017 17:11:09 GMT
+
+{
+  "error": "Bad Request"
+}
+```
+
+```
+└#master> ./willish.py
+ * Running on http://127.0.0.1:5000/ (Press CTRL+C to quit)
+ * Restarting with stat
+ * Debugger is active!
+ * Debugger PIN: 191-272-850
+127.0.0.1 - - [04/May/2017 19:12:00] "POST /wishes HTTP/1.1" 400 -
+```
+
+It works... but we lost an information here. If you take a look at the HTML
+precedently returned, you'll see `<p>Failed to decode JSON object: Unterminated
+string starting at: line 1 column 9 (char 8)</p>`. This was returning us the
+error details!
+
+Wait. Maybe this is because we run the app with `app.run(debug=False)` ? Let's
+try with `debug=True` and without our errorhandler.
+
+```
+└> curl -i -H "Content-Type: application/json" -X POST -d '{"name":"New keyboard' http://localhost:5000/wishes
+HTTP/1.0 400 BAD REQUEST
+Content-Type: text/html
+Content-Length: 192
+Server: Werkzeug/0.12.1 Python/3.6.0
+Date: Thu, 04 May 2017 17:13:16 GMT
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+<title>400 Bad Request</title>
+<h1>Bad Request</h1>
+<p>The browser (or proxy) sent a request that this server could not understand.</p>
+```
+
+```
+└#master> ./willish.py
+ * Running on http://127.0.0.1:5000/ (Press CTRL+C to quit)
+127.0.0.1 - - [04/May/2017 19:14:28] "POST /wishes HTTP/1.1" 400 -
+
+```
+
+Ok so the error is handled diferently if the debug mode is enabled or not
+(makes sense).
+
+The difference can be found in the `flask/wrappers.py` file, line 167 :
+
+```python
+    def on_json_loading_failed(self, e):
+        """Called if decoding of the JSON data failed.  The return value of
+        this method is used by :meth:`get_json` when an error occurred.  The
+        default implementation just raises a :class:`BadRequest` exception.
+
+        .. versionchanged:: 0.10
+           Removed buggy previous behavior of generating a random JSON
+           response.  If you want that behavior back you can trivially
+           add it by subclassing.
+
+        .. versionadded:: 0.8
+        """
+        ctx = _request_ctx_stack.top
+        if ctx is not None and ctx.app.config.get('DEBUG', False):
+            raise BadRequest('Failed to decode JSON object: {0}'.format(e))
+        raise BadRequest()
+```
+
+I actually have to thank JetBrain's PyCharm for finding this, the debugger with step-by-step run was immensely useful
+
+Sooo, the BadRequest returned is directly modified when raised according to the debug mode. So we actually will not to have to handle that by ourselves, cool :)
+Let's see how it goes :
+
+```python
+@app.errorhandler(400)
+def bad_request(error):
+    return make_response(jsonify({'error': str(error)}), 400)
+```
+
+In `debug=False`:
+
+```
+└> curl -i -H "Content-Type: application/json" -X POST -d '{"name":"New keyboard' http://localhost:5000/wishes
+HTTP/1.0 400 BAD REQUEST
+Content-Type: application/json
+Content-Length: 111
+Server: Werkzeug/0.12.1 Python/3.6.0
+Date: Thu, 04 May 2017 21:57:23 GMT
+
+{
+  "error": "400 Bad Request: The browser (or proxy) sent a request that this server could not understand."
+}
+
+```
+
+In `debug=True`:
+
+```
+$ curl -i -H "Content-Type: application/json" -X POST -d '{"name":"New keyboard' http://localhost:5000/wishes
+HTTP/1.0 400 BAD REQUEST
+Content-Type: application/json
+Content-Length: 122
+Server: Werkzeug/0.12.1 Python/3.6.0
+Date: Thu, 04 May 2017 21:57:32 GMT
+
+{
+  "error": "400 Bad Request: Failed to decode JSON object: Unterminated string starting at: line 1 column 9 (char 8)"
+}
+```
+
+Exactly what we wanted!
+
+- JSON `Content-Type`
+- JSON body in answer
+- Real error message, with details in debug mode
+
+let's do the same for the 404 error and transform
+
+```
+@app.errorhandler(404)
+def not_found(error):
+    return make_response(jsonify({'error': 'Not found'}), 404)
+```
+
+in
+
+```python
+@app.errorhandler(404)
+def not_found(error):
+    return make_response(jsonify({'error': str(error)}), 404)
+```
+
+So now insted of
+
+```json
+└> curl -i localhost:5000/wishes/4
+HTTP/1.0 404 NOT FOUND
+Content-Type: application/json
+Content-Length: 27
+Server: Werkzeug/0.12.1 Python/3.6.0
+Date: Thu, 04 May 2017 22:02:00 GMT
+
+{
+  "error": "Not found"
+}
+```
+
+we get :
+
+```json
+└> curl -i localhost:5000/wishes/4
+HTTP/1.0 404 NOT FOUND
+Content-Type: application/json
+Content-Length: 154
+Server: Werkzeug/0.12.1 Python/3.6.0
+Date: Thu, 04 May 2017 22:03:43 GMT
+
+{
+  "error": "404 Not Found: The requested URL was not found on the server.  If you entered the URL manually please check your spelling and try again."
+}
+```
+
+We'll take a look later at how we could generalize this error handling for JSON.
+
+
+
+
+
+201 resource created + Header location with URI
+422 if something fails
+400 for json unparseable, etc
+
+https://en.wikipedia.org/wiki/List_of_HTTP_status_codes
 
 
 # Misc
 
-What about defining some `status.HTTP_NOT_FOUND` to 404 to ensure we get type
-right ?
+- What about defining some `status.HTTP_NOT_FOUND` to 404 to ensure we get type right ?
+- Initiated after this post : https://blog.miguelgrinberg.com/post/designing-a-restful-api-with-python-and-flask
+- Add something about trailing slashes
+- Flask capitalizes http status :(
+- http://flask.pocoo.org/snippets/83/
+
+# Tests ideas
+
+- without trailing slash = trailing slash or redirect
+- uneeded post params
+- id and acquired params
