@@ -39,13 +39,18 @@ def add_wish():
     json = request.get_json()
     if json is None:
         abort(400)
-    }
-    return jsonify({'name': name})
+    if 'name' not in json and 'link' not in json:
+        # TODO : Maybe add error details if Debug is enabled?
+        abort(422)
+    return jsonify({'name': 'placeholder'})
 
 @app.errorhandler(400)
 def bad_request(error):
     return make_response(jsonify({'error': str(error)}), 400)
 
+@app.errorhandler(422)
+def unprocessable_entity(error):
+    return make_response(jsonify({'error': str(error)}), 422)
 
 @app.route('/')
 def index():
