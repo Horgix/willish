@@ -36,8 +36,11 @@ def not_found(error):
 
 @app.route('/wishes', methods=['POST'])
 def add_wish():
-    print(request.json)
-    return jsonify({})
+    json = request.get_json()
+    if json is None:
+        abort(400)
+    }
+    return jsonify({'name': name})
 
 @app.errorhandler(400)
 def bad_request(error):

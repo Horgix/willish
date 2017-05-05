@@ -195,7 +195,8 @@ Date: Wed, 03 May 2017 13:57:24 GMT
 }
 ```
 
-Fine !
+Fine ! (At least we believe it. I intentionally introduced a bug to be fixed
+later and which will give us a reason for writing good tests)
 Now an unknown id...
 
 
@@ -1108,15 +1109,288 @@ Date: Thu, 04 May 2017 22:03:43 GMT
 
 We'll take a look later at how we could generalize this error handling for JSON.
 
+commit `2c588f1ce864e94ff393d9001d6808891f5f15f5` here
+
+### Second
+
+Well. At the beginning we wanted to implement the POST request and ended up tuning errors. Let's get back to the POST itself.
+
+After thinking about it, we'll need the JSON data anyway and we'll have to call `get_json()` so let's subsitute `request.json` by `request.get_json()` right away.
+Reminder: we were just checking that JSON was parseable, but we also need to assert that the `Content-Type` is `application/json`. If it's not, `get_json()` will return None so let's check that:
 
 
+With something like that:
+
+```
+@app.route('/wishes', methods=['POST'])
+def add_wish():
+    json = request.get_json()
+    name = json['name']
+    return jsonify({'name': name})
+```
+
+we end up with
+
+```
+└> curl -i -H "Content-Type: application/json" -X POST -d '{"name":"New keyboard"}' http://localhost:5000/wishes
+HTTP/1.0 200 OK
+Content-Type: application/json
+Content-Length: 29
+Server: Werkzeug/0.12.1 Python/3.6.0
+Date: Fri, 05 May 2017 10:05:09 GMT
+
+{
+  "name": "New keyboard"
+}
+```
+
+and in case of error in the JSON
+
+```
+└> curl -i -H "Content-Type: application/json" -X POST -d '{"name":"New keyboard' http://localhost:5000/wishes
+HTTP/1.0 400 BAD REQUEST
+Content-Type: application/json
+Content-Length: 122
+Server: Werkzeug/0.12.1 Python/3.6.0
+Date: Fri, 05 May 2017 10:05:36 GMT
+
+{
+  "error": "400 Bad Request: Failed to decode JSON object: Unterminated string starting at: line 1 column 9 (char 8)"
+}
+```
+Now let's check with a bad content-type:
+
+```
+└> curl -i -H "Content-Type: application/json2" -X POST -d '{"name":"New keyboard"}' http://localhost:5000/wishes
+HTTP/1.0 500 INTERNAL SERVER ERROR
+Content-Type: text/html; charset=utf-8
+X-XSS-Protection: 0
+Connection: close
+Server: Werkzeug/0.12.1 Python/3.6.0
+Date: Fri, 05 May 2017 10:06:17 GMT
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+[...]
+```
+
+```
+/home/horgix/work/willish/venv/bin/python /home/horgix/work/willish/willish.py
+ * Running on http://127.0.0.1:5000/ (Press CTRL+C to quit)
+ * Restarting with stat
+ * Debugger is active!
+ * Debugger PIN: 191-272-850
+127.0.0.1 - - [05/May/2017 12:06:17] "POST /wishes HTTP/1.1" 500 -
+Traceback (most recent call last):
+  File "/home/horgix/work/willish/venv/lib/python3.6/site-packages/flask/app.py", line 1997, in __call__
+    return self.wsgi_app(environ, start_response)
+  File "/home/horgix/work/willish/venv/lib/python3.6/site-packages/flask/app.py", line 1985, in wsgi_app
+    response = self.handle_exception(e)
+  File "/home/horgix/work/willish/venv/lib/python3.6/site-packages/flask/app.py", line 1540, in handle_exception
+    reraise(exc_type, exc_value, tb)
+  File "/home/horgix/work/willish/venv/lib/python3.6/site-packages/flask/_compat.py", line 33, in reraise
+    raise value
+  File "/home/horgix/work/willish/venv/lib/python3.6/site-packages/flask/app.py", line 1982, in wsgi_app
+    response = self.full_dispatch_request()
+  File "/home/horgix/work/willish/venv/lib/python3.6/site-packages/flask/app.py", line 1614, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "/home/horgix/work/willish/venv/lib/python3.6/site-packages/flask/app.py", line 1517, in handle_user_exception
+    reraise(exc_type, exc_value, tb)
+  File "/home/horgix/work/willish/venv/lib/python3.6/site-packages/flask/_compat.py", line 33, in reraise
+    raise value
+  File "/home/horgix/work/willish/venv/lib/python3.6/site-packages/flask/app.py", line 1612, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "/home/horgix/work/willish/venv/lib/python3.6/site-packages/flask/app.py", line 1598, in dispatch_request
+    return self.view_functions[rule.endpoint](**req.view_args)
+  File "/home/horgix/work/willish/willish.py", line 40, in add_wish
+    name = json['name']
+TypeError: 'NoneType' object is not subscriptable
+```
+
+Fail :( Let's handle when that `get_json()` returns `None`:
+
+Add a check:
+
+```
+@app.route('/wishes', methods=['POST'])
+def add_wish():
+    json = request.get_json()
+    name = json['name']
+    if json is None:
+        abort(400)
+    return jsonify({'name': name})
+```
+
+```
+└> curl -i -H "Content-Type: application/json2" -X POST -d '{"name":"New keyboard"}' http://localhost:5000/wishes
+HTTP/1.0 400 BAD REQUEST
+Content-Type: application/json
+Content-Length: 111
+Server: Werkzeug/0.12.1 Python/3.6.0
+Date: Fri, 05 May 2017 10:07:57 GMT
+
+{
+  "error": "400 Bad Request: The browser (or proxy) sent a request that this server could not understand."
+}
+```
+
+```
+/home/horgix/work/willish/venv/bin/python /home/horgix/work/willish/willish.py
+ * Running on http://127.0.0.1:5000/ (Press CTRL+C to quit)
+ * Restarting with stat
+ * Debugger is active!
+ * Debugger PIN: 191-272-850
+127.0.0.1 - - [05/May/2017 12:07:57] "POST /wishes HTTP/1.1" 400 -
+```
+
+Good !
+
+Now we are properly handling:
+
+- Invalid contenttype
+- Invalid JSON
+- Other benefits already listed above
+
+### Third
+
+Now let's ensure that the json contains either the name or the title
+Now let's make sure we have `name` or `link` defined. Should be
+straightforward. Before implementing it, I want to make a note in the HTTP code
+that we have to return in case of error here. 
+
+From <https://en.wikipedia.org/wiki/List_of_HTTP_status_codes> :
+> 422 Unprocessable Entity (WebDAV; RFC 4918)
+>     The request was well-formed but was unable to be followed due to semantic errors
+
+Indeed, 400 Bad Request is fine for bad json, malformed stuff, etc. But for
+well formatted requests but with bad data, the 422 fits better.
+
+Let's implement the check.
+
+```
+@app.route('/wishes', methods=['POST'])
+def add_wish():
+    json = request.get_json()
+    if json is None:
+        abort(400)
+    if 'name' not in json and 'link' not in json:
+        abort(422)
+    return jsonify({'name': 'placeholder'})
+```
+
+Of course, just like we did until now, we have to override the error handler
+for 422 to make it send JSON :
+
+```
+@app.errorhandler(422)
+def unprocessable_entity(error):
+    return make_response(jsonify({'error': str(error)}), 422)
+```
+
+Let's test it:
+
+```
+└> curl -i -H "Content-Type: application/json" -X POST -d '{"name2":"New keyboard"}' http://localhost:5000/wishes
+HTTP/1.0 422 UNPROCESSABLE ENTITY
+Content-Type: application/json
+Content-Length: 125
+Server: Werkzeug/0.12.1 Python/3.6.0
+Date: Fri, 05 May 2017 13:04:37 GMT
+
+{
+  "error": "422 Unprocessable Entity: The request was well-formed but was unable to be followed due to semantic errors."
+}
+```
+
+```
+127.0.0.1 - - [05/May/2017 15:04:37] "POST /wishes HTTP/1.1" 422 -
+```
+
+Nice!
+
+Now we want to add the real wish in the list, and return it in the data and
+with HTTP 201 that stands for "Resource created"
+
+```
+@app.route('/wishes', methods=['POST'])
+def add_wish():
+    json = request.get_json()
+    if json is None:
+        abort(400)
+    if 'name' not in json and 'link' not in json:
+        abort(422)
+    new_wish = {
+            'id': 42,
+            'name': json.get('name'),
+            'link': json.get('link'),
+            'acquired': False
+            }
+    wishes.append(new_wish)
+    return jsonify(new_wish), 201
+```
+
+Note a few things:
+
+- We use '42' as a placeholder for the ID right now
+- the `json.get('name')` and `json.get('link')` will return null if a the field
+  is not present in the dict, which is fine
+- We're setting acquired to False right away, as noted earlier
+- We append it to the list of existing wishes before returning anything
+- We are returning 201
+- We are returning the object we just created
+
+```
+└> curl -i -H "Content-Type: application/json" -X POST -d '{"name":"New keyboard"}' http://localhost:5000/wishes
+HTTP/1.0 201 CREATED
+Content-Type: application/json
+Content-Length: 81
+Server: Werkzeug/0.12.1 Python/3.6.0
+Date: Fri, 05 May 2017 13:24:14 GMT
 
 
-201 resource created + Header location with URI
-422 if something fails
-400 for json unparseable, etc
+{
+  "acquired": false,
+  "id": 42,
+  "link": null,
+  "name": "New keyboard"
+}
 
-https://en.wikipedia.org/wiki/List_of_HTTP_status_codes
+```
+
+Wow, it's working! And we should be able to get it by GETting /wishes :
+
+```
+└> curl -i http://localhost:5000/wishes
+HTTP/1.0 200 OK
+Content-Type: application/json
+Content-Length: 464
+Server: Werkzeug/0.12.1 Python/3.6.0
+Date: Fri, 05 May 2017 13:24:27 GMT
+
+{
+  "wishes": [
+    {
+      "acquired": true,
+      "id": 1,
+      "link": "https://duck-duck-go.myshopify.com/collections/frontpage/products/duckduckgo-t-shirt",
+      "name": "DuckDuckGo t-shirt"
+    },
+    {
+      "acquired": false,
+      "id": 2,
+      "link": "https://supporters.eff.org/shop/eff-lapel-pin",
+      "name": "EFF pin"
+    },
+    {
+      "acquired": false,
+      "id": 42,
+      "link": null,
+      "name": "New keyboard"
+    }
+  ]
+}
+```
+
+Yay, it works! However, a few things to note:
 
 
 # Misc
@@ -1126,6 +1400,9 @@ https://en.wikipedia.org/wiki/List_of_HTTP_status_codes
 - Add something about trailing slashes
 - Flask capitalizes http status :(
 - http://flask.pocoo.org/snippets/83/
+- Should we send details of failure reason with error 400 ?
+- 422 in case of unsupported contenttype ?
+- Old ids reusability
 
 # Tests ideas
 
