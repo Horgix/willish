@@ -1390,8 +1390,216 @@ Date: Fri, 05 May 2017 13:24:27 GMT
 }
 ```
 
-Yay, it works! However, a few things to note:
+Yay, it works! However, note that there is absolutely no check Done on the ID
+here and its just a placeholder, which allow stuff like that to happen (not
+stopping  the server from the previous run):
 
+```
+└> curl -i -H "Content-Type: application/json" -X POST -d '{"link":"http://schwag.archlinux.ca/"}' http://localhost:5000/wishes
+HTTP/1.0 201 CREATED
+Content-Type: application/json
+Content-Length: 96
+Server: Werkzeug/0.12.1 Python/3.6.0
+Date: Fri, 05 May 2017 13:30:52 GMT
+
+{
+  "acquired": false,
+  "id": 42,
+  "link": "http://schwag.archlinux.ca/",
+  "name": null
+}
+```
+
+```
+└> curl -i http://localhost:5000/wishes
+HTTP/1.0 200 OK
+Content-Type: application/json
+Content-Length: 586
+Server: Werkzeug/0.12.1 Python/3.6.0
+Date: Fri, 05 May 2017 13:30:54 GMT
+
+{
+  "wishes": [
+    {
+      "acquired": true,
+      "id": 1,
+      "link": "https://duck-duck-go.myshopify.com/collections/frontpage/products/duckduckgo-t-shirt",
+      "name": "DuckDuckGo t-shirt"
+    },
+    {
+      "acquired": false,
+      "id": 2,
+      "link": "https://supporters.eff.org/shop/eff-lapel-pin",
+      "name": "EFF pin"
+    },
+    {
+      "acquired": false,
+      "id": 42,
+      "link": null,
+      "name": "New keyboard"
+    },
+    {
+      "acquired": false,
+      "id": 42,
+      "link": "http://schwag.archlinux.ca/",
+      "name": null
+    }
+  ]
+}
+```
+
+One good thing, one bad!
+
+- Good : we just validated that we can also add tasks with only a link
+- Bad : we just created two tasks with the same ID
+
+Long story short, we'll have to handle the ID smartly. And this is not the kind
+of things you want to do, we are here just because we're using a poor in memory
+"database". In real world, the DB itself would handle that id generation and
+uniqueness (and we'll come to this, don't worry).
+
+We're going to do something dirty (sorryyy).
+
+Add a global variable `max_id`:
+
+```
+max_id = 2
+```
+
+2 since we have 2 wishes in our base "database"
+
+and then increment it and assign the new value to the new wish:
+
+```
+    max_id += 1
+    new_id = max_id
+    new_wish = {
+            'id': max_id,
+            'name': json.get('name'),
+            'link': json.get('link'),
+            'acquired': False
+            }
+```
+
+This doesn't work :
+
+```
+127.0.0.1 - - [05/May/2017 15:37:53] "POST /wishes HTTP/1.1" 500 -
+Traceback (most recent call last):
+  File "/home/horgix/work/willish/venv/lib/python3.6/site-packages/flask/app.py", line 1997, in __call__
+    return self.wsgi_app(environ, start_response)
+  File "/home/horgix/work/willish/venv/lib/python3.6/site-packages/flask/app.py", line 1985, in wsgi_app
+    response = self.handle_exception(e)
+  File "/home/horgix/work/willish/venv/lib/python3.6/site-packages/flask/app.py", line 1540, in handle_exception
+    reraise(exc_type, exc_value, tb)
+  File "/home/horgix/work/willish/venv/lib/python3.6/site-packages/flask/_compat.py", line 33, in reraise
+    raise value
+  File "/home/horgix/work/willish/venv/lib/python3.6/site-packages/flask/app.py", line 1982, in wsgi_app
+    response = self.full_dispatch_request()
+  File "/home/horgix/work/willish/venv/lib/python3.6/site-packages/flask/app.py", line 1614, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "/home/horgix/work/willish/venv/lib/python3.6/site-packages/flask/app.py", line 1517, in handle_user_exception
+    reraise(exc_type, exc_value, tb)
+  File "/home/horgix/work/willish/venv/lib/python3.6/site-packages/flask/_compat.py", line 33, in reraise
+    raise value
+  File "/home/horgix/work/willish/venv/lib/python3.6/site-packages/flask/app.py", line 1612, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "/home/horgix/work/willish/venv/lib/python3.6/site-packages/flask/app.py", line 1598, in dispatch_request
+    return self.view_functions[rule.endpoint](**req.view_args)
+  File "/home/horgix/work/willish/willish.py", line 48, in add_wish
+    max_id += 1
+UnboundLocalError: local variable 'max_id' referenced before assignment
+```
+
+Here, it's more global python knowledge than anything else. Long story short
+(agian), it's due to python scoping and to the fact that we're trying to
+reassign a global variable so we need to specify it explicitely by flagging it
+as `global`:
+
+```
+    global max_id
+    max_id += 1
+    new_id = max_id
+    new_wish = {
+            'id': max_id,
+            'name': json.get('name'),
+            'link': json.get('link'),
+            'acquired': False
+            }
+```
+
+Let's try this :
+
+```
+└> curl -i -H "Content-Type: application/json" -X POST -d '{"name":"New keyboard"}' http://localhost:5000/wishes
+HTTP/1.0 201 CREATED
+Content-Type: application/json
+Content-Length: 80
+Server: Werkzeug/0.12.1 Python/3.6.0
+Date: Fri, 05 May 2017 13:41:52 GMT
+
+{
+  "acquired": false,
+  "id": 3,
+  "link": null,
+  "name": "New keyboard"
+}
+
+└> curl -i -H "Content-Type: application/json" -X POST -d '{"link":"http://schwag.archlinux.ca/"}' http://localhost:5000/wishes
+HTTP/1.0 201 CREATED
+Content-Type: application/json
+Content-Length: 95
+Server: Werkzeug/0.12.1 Python/3.6.0
+Date: Fri, 05 May 2017 13:41:55 GMT
+
+{
+  "acquired": false,
+  "id": 4,
+  "link": "http://schwag.archlinux.ca/",
+  "name": null
+}
+
+└> curl -i http://localhost:5000/wishes
+HTTP/1.0 200 OK
+Content-Type: application/json
+Content-Length: 584
+Server: Werkzeug/0.12.1 Python/3.6.0
+Date: Fri, 05 May 2017 13:41:59 GMT
+
+{
+  "wishes": [
+    {
+      "acquired": true,
+      "id": 1,
+      "link": "https://duck-duck-go.myshopify.com/collections/frontpage/products/duckduckgo-t-shirt",
+      "name": "DuckDuckGo t-shirt"
+    },
+    {
+      "acquired": false,
+      "id": 2,
+      "link": "https://supporters.eff.org/shop/eff-lapel-pin",
+      "name": "EFF pin"
+    },
+    {
+      "acquired": false,
+      "id": 3,
+      "link": null,
+      "name": "New keyboard"
+    },
+    {
+      "acquired": false,
+      "id": 4,
+      "link": "http://schwag.archlinux.ca/",
+      "name": null
+    }
+  ]
+}
+```
+
+Yay,it works :)
+We can't just take the greater ID and increment it, else in case of POST, then
+DELETE, then POST, we could re-attribute  the same ID but to a different wish,
+which wwould be a non-sense.
 
 # Misc
 
@@ -1409,3 +1617,9 @@ Yay, it works! However, a few things to note:
 - without trailing slash = trailing slash or redirect
 - uneeded post params
 - id and acquired params
+- Add item with name only
+- Add item with link only
+- Add item with link and name
+- Add, Remove, Add, check ID
+- Content type
+- JSON badly formatted

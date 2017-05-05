@@ -18,6 +18,8 @@ wishes = [
     }
 ]
 
+max_id = 2
+
 
 @app.route('/wishes', methods=['GET'])
 def get_wishes():
@@ -42,8 +44,11 @@ def add_wish():
     if 'name' not in json and 'link' not in json:
         # TODO : Maybe add error details if Debug is enabled?
         abort(422)
+    global max_id
+    max_id += 1
+    new_id = max_id
     new_wish = {
-            'id': 42,
+            'id': max_id,
             'name': json.get('name'),
             'link': json.get('link'),
             'acquired': False
