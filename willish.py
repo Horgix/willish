@@ -42,7 +42,14 @@ def add_wish():
     if 'name' not in json and 'link' not in json:
         # TODO : Maybe add error details if Debug is enabled?
         abort(422)
-    return jsonify({'name': 'placeholder'})
+    new_wish = {
+            'id': 42,
+            'name': json.get('name'),
+            'link': json.get('link'),
+            'acquired': False
+            }
+    wishes.append(new_wish)
+    return jsonify(new_wish), 201
 
 @app.errorhandler(400)
 def bad_request(error):
