@@ -1,5 +1,9 @@
 Warning, this is being developed, not even alpha yet.
 
+http://flask.pocoo.org/docs/0.12/patterns/errorpages/
+http://flask.pocoo.org/docs/0.12/errorhandling/
+http://flask.pocoo.org/snippets/83/
+
 # Methods
 
 GET   http://example.com/wishes
@@ -1013,9 +1017,12 @@ The difference can be found in the `flask/wrappers.py` file, line 167 :
         raise BadRequest()
 ```
 
-I actually have to thank JetBrain's PyCharm for finding this, the debugger with step-by-step run was immensely useful
+I actually have to thank JetBrain's PyCharm for finding this, the debugger with
+step-by-step run was immensely useful
 
-Sooo, the BadRequest returned is directly modified when raised according to the debug mode. So we actually will not to have to handle that by ourselves, cool :)
+Sooo, the BadRequest returned is directly modified when raised according to the
+debug mode. So we actually will not to have to handle that by ourselves, cool
+:)
 Let's see how it goes :
 
 ```python
@@ -1113,10 +1120,15 @@ commit `2c588f1ce864e94ff393d9001d6808891f5f15f5` here
 
 ### Second
 
-Well. At the beginning we wanted to implement the POST request and ended up tuning errors. Let's get back to the POST itself.
+Well. At the beginning we wanted to implement the POST request and ended up
+tuning errors. Let's get back to the POST itself.
 
-After thinking about it, we'll need the JSON data anyway and we'll have to call `get_json()` so let's subsitute `request.json` by `request.get_json()` right away.
-Reminder: we were just checking that JSON was parseable, but we also need to assert that the `Content-Type` is `application/json`. If it's not, `get_json()` will return None so let's check that:
+After thinking about it, we'll need the JSON data anyway and we'll have to call
+`get_json()` so let's subsitute `request.json` by `request.get_json()` right
+away.
+Reminder: we were just checking that JSON was parseable, but we also need to
+assert that the `Content-Type` is `application/json`. If it's not, `get_json()`
+will return None so let's check that:
 
 
 With something like that:
@@ -1601,9 +1613,19 @@ We can't just take the greater ID and increment it, else in case of POST, then
 DELETE, then POST, we could re-attribute  the same ID but to a different wish,
 which wwould be a non-sense.
 
-# Misc
+commit 32f988d16d0533f17149b1efb86742360ab75e33
 
-- What about defining some `status.HTTP_NOT_FOUND` to 404 to ensure we get type right ?
+
+
+We'll let the PUT for modification and DELETE for deletion on the side for now.
+We already have some stuff to test, so let's go for testing !
+
+Below are a few notes on ideas for later :
+
+## Misc
+
+- What about using/defining some `status.HTTP_NOT_FOUND` to 404 to ensure we
+  get type right ?
 - Initiated after this post : https://blog.miguelgrinberg.com/post/designing-a-restful-api-with-python-and-flask
 - Add something about trailing slashes
 - Flask capitalizes http status :(
@@ -1612,7 +1634,7 @@ which wwould be a non-sense.
 - 422 in case of unsupported contenttype ?
 - Old ids reusability
 
-# Tests ideas
+## Tests ideas
 
 - without trailing slash = trailing slash or redirect
 - uneeded post params
@@ -1623,3 +1645,554 @@ which wwould be a non-sense.
 - Add, Remove, Add, check ID
 - Content type
 - JSON badly formatted
+
+
+# Tests
+
+Let's test!
+
+After searching for a while, I found Chakram <http://dareid.github.io/chakram/>
+:
+
+From http://dareid.github.io/chakram/  :
+> Chakram allows you to write clear and comprehensive tests,
+> ensuring JSON REST endpoints work correctly as you develop and in the future
+
+From https://github.com/dareid/chakram  :
+> Chakram is an API testing framework designed to perform end to end tests on JSON REST endpoints.
+
+This is exactly what we want!
+
+yeah, JSON, I know, but I want to learn more about it, and it looks like this
+does the job.
+
+it's based on :
+
+- http://mochajs.org/ , a test runner (it will run the tests and report them,
+  and allow multiple test "executors" to be managed)
+- http://chaijs.com/ , an assertien library which is the "executor" managed by
+  mocha in context of chakram
+
+## Beginning
+
+let's create a directory "tests"
+
+    npm install --save-dev chakram mocha  
+
+```
+└#master> npm list                                                                             [130]~16:28 Fri,May 05┘
+/home/horgix/work/willish/tests
+├─┬ chakram@1.5.0
+│ ├─┬ chai@3.5.0
+│ │ ├── assertion-error@1.0.2
+│ │ ├─┬ deep-eql@0.1.3
+│ │ │ └── type-detect@0.1.1
+│ │ └── type-detect@1.0.0
+│ ├── chai-as-promised@5.3.0
+│ ├── chai-subset@1.5.0
+│ ├── extend-object@1.0.0
+│ ├── q@1.5.0
+│ ├─┬ request@2.81.0
+│ │ ├── aws-sign2@0.6.0
+│ │ ├── aws4@1.6.0
+│ │ ├── caseless@0.12.0
+│ │ ├─┬ combined-stream@1.0.5
+│ │ │ └── delayed-stream@1.0.0
+│ │ ├── extend@3.0.1
+│ │ ├── forever-agent@0.6.1
+│ │ ├─┬ form-data@2.1.4
+│ │ │ ├── asynckit@0.4.0
+│ │ │ ├── combined-stream@1.0.5 deduped
+│ │ │ └── mime-types@2.1.15 deduped
+│ │ ├─┬ har-validator@4.2.1
+│ │ │ ├─┬ ajv@4.11.8
+│ │ │ │ ├── co@4.6.0
+│ │ │ │ └─┬ json-stable-stringify@1.0.1
+│ │ │ │   └── jsonify@0.0.0
+│ │ │ └── har-schema@1.0.5
+│ │ ├─┬ hawk@3.1.3
+│ │ │ ├─┬ boom@2.10.1
+│ │ │ │ └── hoek@2.16.3 deduped
+│ │ │ ├─┬ cryptiles@2.0.5
+│ │ │ │ └── boom@2.10.1 deduped
+│ │ │ ├── hoek@2.16.3
+│ │ │ └─┬ sntp@1.0.9
+│ │ │   └── hoek@2.16.3 deduped
+│ │ ├─┬ http-signature@1.1.1
+│ │ │ ├── assert-plus@0.2.0
+│ │ │ ├─┬ jsprim@1.4.0
+│ │ │ │ ├── assert-plus@1.0.0
+│ │ │ │ ├── extsprintf@1.0.2
+│ │ │ │ ├── json-schema@0.2.3
+│ │ │ │ └─┬ verror@1.3.6
+│ │ │ │   └── extsprintf@1.0.2 deduped
+│ │ │ └─┬ sshpk@1.13.0
+│ │ │   ├── asn1@0.2.3
+│ │ │   ├── assert-plus@1.0.0
+│ │ │   ├─┬ bcrypt-pbkdf@1.0.1
+│ │ │   │ └── tweetnacl@0.14.5 deduped
+│ │ │   ├─┬ dashdash@1.14.1
+│ │ │   │ └── assert-plus@1.0.0
+│ │ │   ├─┬ ecc-jsbn@0.1.1
+│ │ │   │ └── jsbn@0.1.1 deduped
+│ │ │   ├─┬ getpass@0.1.7
+│ │ │   │ └── assert-plus@1.0.0
+│ │ │   ├─┬ jodid25519@1.0.2
+│ │ │   │ └── jsbn@0.1.1 deduped
+│ │ │   ├── jsbn@0.1.1
+│ │ │   └── tweetnacl@0.14.5
+│ │ ├── is-typedarray@1.0.0
+│ │ ├── isstream@0.1.2
+│ │ ├── json-stringify-safe@5.0.1
+│ │ ├─┬ mime-types@2.1.15
+│ │ │ └── mime-db@1.27.0
+│ │ ├── oauth-sign@0.8.2
+│ │ ├── performance-now@0.2.0
+│ │ ├── qs@6.4.0
+│ │ ├── safe-buffer@5.0.1
+│ │ ├── stringstream@0.0.5
+│ │ ├─┬ tough-cookie@2.3.2
+│ │ │ └── punycode@1.4.1
+│ │ ├─┬ tunnel-agent@0.6.0
+│ │ │ └── safe-buffer@5.0.1 deduped
+│ │ └── uuid@3.0.1
+│ ├─┬ request-debug@0.2.0
+│ │ └── stringify-clone@1.1.1
+│ └── tv4@1.3.0
+└─┬ mocha@3.3.0
+  ├── browser-stdout@1.3.0
+  ├─┬ commander@2.9.0
+  │ └── graceful-readlink@1.0.1
+  ├─┬ debug@2.6.0
+  │ └── ms@0.7.2
+  ├── diff@3.2.0
+  ├── escape-string-regexp@1.0.5
+  ├─┬ glob@7.1.1
+  │ ├── fs.realpath@1.0.0
+  │ ├─┬ inflight@1.0.6
+  │ │ ├── once@1.4.0 deduped
+  │ │ └── wrappy@1.0.2
+  │ ├── inherits@2.0.3
+  │ ├─┬ minimatch@3.0.3
+  │ │ └─┬ brace-expansion@1.1.7
+  │ │   ├── balanced-match@0.4.2
+  │ │   └── concat-map@0.0.1
+  │ ├─┬ once@1.4.0
+  │ │ └── wrappy@1.0.2 deduped
+  │ └── path-is-absolute@1.0.1
+  ├── growl@1.9.2
+  ├── json3@3.3.2
+  ├─┬ lodash.create@3.1.1
+  │ ├─┬ lodash._baseassign@3.2.0
+  │ │ ├── lodash._basecopy@3.0.1
+  │ │ └─┬ lodash.keys@3.1.2
+  │ │   ├── lodash._getnative@3.9.1
+  │ │   ├── lodash.isarguments@3.1.0
+  │ │   └── lodash.isarray@3.0.4
+  │ ├── lodash._basecreate@3.0.3
+  │ └── lodash._isiterateecall@3.0.9
+  ├─┬ mkdirp@0.5.1
+  │ └── minimist@0.0.8
+  └─┬ supports-color@3.1.2
+    └── has-flag@1.0.0
+```
+
+Wow, that's a lot.
+But the npm install fails at the end with:
+
+```
+npm WARN enoent ENOENT: no such file or directory, open '/home/horgix/work/willish/tests/package.json'
+npm WARN tests No description
+npm WARN tests No repository field.
+npm WARN tests No README data
+npm WARN tests No license field.
+```
+
+Ok, looks like the package.json is quite similar to the requirements.txt for
+python and that npm can directly append to it, but it doesn't exist yet
+
+turns out you have to `npm init` it before, kind of like `virtualenv` creation;
+makes sense.
+
+```
+└#master> npm init
+This utility will walk you through creating a package.json file.
+It only covers the most common items, and tries to guess sensible defaults.
+
+See `npm help json` for definitive documentation on these fields
+and exactly what they do.
+
+Use `npm install <pkg> --save` afterwards to install a package and
+save it as a dependency in the package.json file.
+
+Press ^C at any time to quit.
+name: (tests) willish-test
+version: (1.0.0)
+description: Tests for Willish API
+entry point: (test.js)
+test command: (mocha)
+git repository:
+keywords:
+author: Alexis "Horgix" Chotard
+license: (ISC) Beerware
+About to write to /home/horgix/work/willish/tests/package.json:
+
+{
+  "name": "willish-test",
+  "version": "1.0.0",
+  "description": "Tests for Willish API",
+  "main": "test.js",
+  "dependencies": {
+    "chakram": "^1.5.0"
+  },
+  "devDependencies": {
+    "mocha": "^3.3.0"
+  },
+  "scripts": {
+    "test": "mocha"
+  },
+  "author": "Alexis \"Horgix\" Chotard",
+  "license": "Beerware"
+}
+
+
+Is this ok? (yes) yes
+```
+
+Now if we reinstall chakram and mocha, it only warn like this :
+
+```
+npm WARN willish-test@1.0.0 No repository field.
+npm WARN The package chakram is included as both a dev and production dependency.
+```
+
+which is fine for now.
+The `package.json` now automatically contains this:
+
+```
+{
+  "name": "willish-test",
+  "version": "1.0.0",
+  "description": "Tests for Willish API",
+  "main": "test.js",
+  "dependencies": {
+    "chakram": "^1.5.0"
+  },
+  "devDependencies": {
+    "chakram": "^1.5.0",
+    "mocha": "^3.3.0"
+  },
+  "scripts": {
+    "test": "mocha"
+  },
+  "author": "Alexis \"Horgix\" Chotard",
+  "license": "Beerware"
+}
+```
+
+d81c0233a97a365872942b18988e8def1053e383
+
+Let's try the chakram example:
+
+```
+└#master> cat test.js
+var chakram = require('chakram');
+
+describe("Chakram", function() {
+    it("should offer simple HTTP request capabilities", function () {
+        return chakram.get("http://httpbin.org/get");
+    });
+});
+```
+
+```
+└#master> mocha .
+zsh: command not found: mocha
+```
+
+Well, contrary to virtualenv, nothing has been set in my PATH so of course it's
+not going to find a new command. Thanks StackOverflow here ! 
+http://stackoverflow.com/a/24497202/2781800
+
+And you know what ? When we answered "mocha" to the "test command" in "npm
+init", it already put it in the package.json for us! Let's call it
+
+```
+└#master> npm test
+
+> willish-test@1.0.0 test /home/horgix/work/willish/tests
+> mocha
+
+
+
+  Chakram
+    ✓ should offer simple HTTP request capabilities (322ms)
+
+
+  1 passing (332ms)
+```
+
+nice.
+Let's write out first test!
+
+Chai offers 3 assertions type : expect, should, and assert
+They cover the differences really well here : ADD LINK
+
+tl;d
+  - assert should be avoided if possible
+  - should is just like expect but with a bit more restrictions
+
+so, as in the example, we'll just use expect for now.
+
+```
+var chakram = require('chakram'),
+    expect = chakram.expect;
+
+describe("Chakram", function() {
+    it("should answer with success to a basic GET on /wishes", function () {
+      var response = chakram.get("http://127.0.0.1:5000/wishes");
+      expect(response).to.have.status(200);
+      return chakram.wait();
+    });
+});
+```
+
+- Do not forget to declare `expect`
+- We are just querying our test application directly on `127.0.0.1`, port
+  `5000`
+- We are asserting that the status code is 200, which is OK
+
+```
+> npm test
+
+> willish-test@1.0.0 test /home/horgix/work/willish/tests
+> mocha
+
+
+
+  Chakram
+    ✓ should answer with success to a basic GET on /wishes
+
+
+  1 passing (46ms)
+```
+
+So it's succeeding!
+
+Let's add a check to ensure the header Content-Type is here
+
+```
+var chakram = require("chakram"),
+    expect = chakram.expect;
+
+describe("Chakram", function() {
+    it("should answer with success to a basic GET on /wishes", function () {
+      var response = chakram.get("http://127.0.0.1:5000/wishes");
+      expect(response).to.have.status(200);
+      expect(response).to.have.header("Content-Type")
+      return chakram.wait();
+    });
+});
+```
+
+```
+> npm test
+
+ willish-test@1.0.0 test /home/horgix/work/willish/tests
+ mocha
+
+
+
+ Chakram
+   ✓ should answer with success to a basic GET on /wishes (40ms)
+
+
+ 1 passing (49ms)
+```
+
+Nice. However, something bothers me: if something is going to fail, I'll know
+it one fail after the other
+
+for example, let's update the test to this:
+
+```
+var chakram = require("chakram"),
+    expect = chakram.expect;
+
+describe("Chakram", function() {
+    it("should answer with success to a basic GET on /wishes", function () {
+      var response = chakram.get("http://127.0.0.1:5000/wishes");
+      expect(response).to.have.status(500);
+      expect(response).to.have.header("Content-Type-Wrong-Header")
+      return chakram.wait();
+    });
+});
+```
+
+notice the 500 and Content-Type-Wrong-Header. Both checks will fail
+
+```
+└#master> npm test
+
+> willish-test@1.0.0 test /home/horgix/work/willish/tests
+> mocha
+
+
+
+  Chakram
+    1) should answer with success to a basic GET on /wishes
+
+
+  0 passing (48ms)
+  1 failing
+
+  1) Chakram should answer with success to a basic GET on /wishes:
+     AssertionError: expected status code 200 to equal 500
+
+
+
+
+npm ERR! Test failed.  See above for more details.
+```
+
+and yet we are only getting the information that the status code is wrong, not
+the header. It's really oriented business tests more than sort of unit tests.
+But I want precise tests! let's try something.
+
+```
+var chakram = require("chakram"),
+    expect = chakram.expect;
+
+describe("GET /wishes", function() {
+    var apiResponse = chakram.get("http://127.0.0.1:5000/wishes");
+    it("should return success status code", function () {
+      return expect(apiResponse).to.have.status(200);
+    });
+    it("should have correct 'Content-Type' header", function () {
+      return expect(apiResponse).to.have.header("Content-Type")
+    });
+});
+```
+
+```
+> npm test
+
+> willish-test@1.0.0 test /home/horgix/work/willish/tests
+> mocha
+
+
+
+  GET /wishes
+    ✓ should return success status code
+    ✓ should have correct 'Content-Type' header
+
+
+  2 passing (44ms)
+```
+
+Nice. We do the request only once, but check the result in separate assertions,
+giving us clear logs
+
+
+However, the following style can be found on Chakram official example
+(randomuser):
+
+
+```
+var chakram = require("chakram"),
+    expect = chakram.expect;
+
+describe("GET /wishes", function() {
+    var apiResponse;
+
+    before(function (){
+      apiResponse = chakram.get("http://127.0.0.1:5000/wishes");
+      return apiResponse;
+    });
+
+    it("should return success status code", function () {
+      return expect(apiResponse).to.have.status(200);
+    });
+    it("should have correct 'Content-Type' header", function () {
+      return expect(apiResponse).to.have.header("Content-Type")
+    });
+});
+```
+
+This "before" function is called once before the tests, not before each, so it
+behaves exactly as what I did befre without this function. What's the
+difference ? No idea right now. TODO : check
+
+Here is were we are :
+
+```
+var chakram = require("chakram"),
+    expect = chakram.expect;
+
+describe("GET /wishes", function() {
+    var apiResponse;
+
+    before(function (){
+      apiResponse = chakram.get("http://127.0.0.1:5000/wishes");
+      return apiResponse;
+    });
+
+    it("should have success status code", function () {
+      return expect(apiResponse).to.have.status(200);
+    });
+    it("should have correct 'Content-Type' header", function () {
+      return expect(apiResponse).to.have.header("Content-Type",
+        "application/json")
+    });
+    it("should have 'Server' header", function () {
+      return expect(apiResponse).to.have.header("Server");
+    });
+    it("should have 'Date' header", function () {
+      return expect(apiResponse).to.have.header("Date");
+    });
+    it("should have 'Content-Length' header", function () {
+      return expect(apiResponse).to.have.header("Content-Length");
+    });
+    // TODO : shouldn't leak too much server info
+});
+```
+
+
+```
+└#master> npm test
+
+> willish-test@1.0.0 test /home/horgix/work/willish/tests
+> mocha
+
+
+
+  GET /wishes
+    ✓ should have success status code
+    ✓ should have correct 'Content-Type' header
+    ✓ should have 'Server' header
+    ✓ should have 'Date' header
+    ✓ should have 'Content-Length' header
+
+
+  5 passing (47ms)
+```
+
+Ok so we're checking header presence, and that the content-type is
+application/json
+
+Now let's check the JSON itself.
+Take a look at JSON schema, link doc; etc
+
+
+TODO
+
+
+
+
+
+
+
+
+
+
+add check on raw `/`
