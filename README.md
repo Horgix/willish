@@ -2180,11 +2180,45 @@ describe("GET /wishes", function() {
 Ok so we're checking header presence, and that the content-type is
 application/json
 
+commit 9b02264160426e13d1c9b713fd455e321b4e9bd5
 Now let's check the JSON itself.
 Take a look at JSON schema, link doc; etc
 
+JSON schema:
 
-TODO
+
+https://spacetelescope.github.io/understanding-json-schema/reference/object.html#required
+http://json-schema.org/examples.html
+
+```
+    it("should have valid JSON as answer", function () {
+    return expect(apiResponse).to.have.schema({
+      "type": "object",
+      "required": ["wishes"],
+      "properties": {
+        "wishes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "acquired": { "type": "boolean" },
+              "id": { "type": "integer" },
+              "link": { "type": "string" },
+              "name": { "type": "string" }
+            }
+          }
+        }
+      }
+    });
+  });
+});
+```
+
+Here we go. This should do the job. Note the "required" part!
+TODO: we need to extend it later, after adding some wishes, to make sure they
+appear in the list by imposing the wishes array length on the test.
+
+We'll now add tests for the POST function.
 
 
 
@@ -2196,3 +2230,4 @@ TODO
 
 
 add check on raw `/`
+TODO2 npm venv
