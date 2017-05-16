@@ -125,6 +125,40 @@ describe("POST on /wishes without name or link", function() {
   });
 });
 
+describe("POST on /wishes without 'application/json' Content-Type", function() {
+  var apiResponse;
+
+  before(function (){
+    newWish = {
+      name: "New Keyboard",
+      link: "http://www.thekeyboardwaffleiron.com/"
+    };
+    apiResponse = chakram.post(
+      "http://127.0.0.1:5000/wishes",
+      newWish,
+      { headers: {"Content-Type": "invalid/contenttype"}}
+    );
+    return apiResponse;
+  });
+
+  it("should have status code 400", function () {
+    return expect(apiResponse).to.have.status(400);
+  });
+  it("should have 'application/json' as Content-Type", function () {
+    return expect(apiResponse).to.have.header("Content-Type",
+      "application/json")
+  });
+  it("should have error declaration as JSON in body", function () {
+    return expect(apiResponse).to.have.schema({
+      "type": "object",
+      "required": ["error"],
+      "properties": {
+        "error": { "type": "string" }
+      }
+    });
+  });
+});
+
 
   // TODO:
   // - incorrect request !
