@@ -2177,6 +2177,7 @@ describe("GET /wishes", function() {
   5 passing (47ms)
 ```
 
+note the 'before' part btw
 Ok so we're checking header presence, and that the content-type is
 application/json
 
@@ -2219,6 +2220,451 @@ TODO: we need to extend it later, after adding some wishes, to make sure they
 appear in the list by imposing the wishes array length on the test.
 
 We'll now add tests for the POST function.
+The http://dareid.github.io/chakram/example/dweet/ example provides some POST
+example.
+
+
+Now we're onto something really intesting.
+I added the following test:
+
+```
+describe("POST /wishes", function() {
+  var apiResponse;
+
+  before(function (){
+    newWish = {
+      name: "New Keyboard"
+    };
+    apiResponse = chakram.post("http://127.0.0.1:5000/wishes", newWish);
+    return apiResponse;
+  });
+
+  it("should have 'Created' status code", function () {
+    console.log(apiResponse)
+    return expect(apiResponse).to.have.status(201);
+  });
+});
+```
+
+Simple enough uh?
+Well... remember that we can omit name or link?
+That's what we just did. And it works!
+
+```
+└#master> npm test
+
+> willish-test@1.0.0 test /home/horgix/work/willish/tests
+> mocha
+
+
+
+  GET /wishes
+    ✓ should have success status code
+    ✓ should have correct 'Content-Type' header
+    ✓ should have 'Server' header
+    ✓ should have 'Date' header
+    ✓ should have 'Content-Length' header
+    ✓ should have valid JSON as answer
+
+  POST /wishes
+{ state: 'fulfilled',
+  value:
+   { error: null,
+     response:
+      IncomingMessage {
+        _readableState: [Object],
+        readable: false,
+        domain: null,
+        _events: [Object],
+        _eventsCount: 4,
+        _maxListeners: undefined,
+        socket: [Object],
+        connection: [Object],
+        httpVersionMajor: 1,
+        httpVersionMinor: 0,
+        httpVersion: '1.0',
+        complete: true,
+        headers: [Object],
+        rawHeaders: [Object],
+        trailers: {},
+        rawTrailers: [],
+        upgrade: false,
+        url: '',
+        method: null,
+        statusCode: 201,
+        statusMessage: 'CREATED',
+        client: [Object],
+        _consuming: true,
+        _dumped: false,
+        req: [Object],
+        request: [Object],
+        toJSON: [Function: responseToJSON],
+        caseless: [Object],
+        read: [Function],
+        body: [Object] },
+     body: { acquired: false, id: 3, link: null, name: 'New Keyboard' },
+     jar: RequestJar { _jar: [Object] },
+     url: 'http://127.0.0.1:5000/wishes',
+     responseTime: 4.134612 } }
+    ✓ should have 'Created' status code
+
+
+  7 passing (61ms)
+```
+
+So, where's the problem?
+if we re-run exactly the same tests (the whole tests, GET /wishes + POST)... it
+fails!
+
+```
+└#master> npm test                                                                                   19:53 Sat,May 13┘
+
+> willish-test@1.0.0 test /home/horgix/work/willish/tests
+> mocha
+
+
+
+  GET /wishes
+    ✓ should have success status code
+    ✓ should have correct 'Content-Type' header
+    ✓ should have 'Server' header
+    ✓ should have 'Date' header
+    ✓ should have 'Content-Length' header
+    1) should have valid JSON as answer
+
+  POST /wishes
+{ state: 'fulfilled',
+  value:
+   { error: null,
+     response:
+      IncomingMessage {
+        _readableState: [Object],
+        readable: false,
+        domain: null,
+        _events: [Object],
+        _eventsCount: 4,
+        _maxListeners: undefined,
+        socket: [Object],
+        connection: [Object],
+        httpVersionMajor: 1,
+        httpVersionMinor: 0,
+        httpVersion: '1.0',
+        complete: true,
+        headers: [Object],
+        rawHeaders: [Object],
+        trailers: {},
+        rawTrailers: [],
+        upgrade: false,
+        url: '',
+        method: null,
+        statusCode: 201,
+        statusMessage: 'CREATED',
+        client: [Object],
+        _consuming: true,
+        _dumped: false,
+        req: [Object],
+        request: [Object],
+        toJSON: [Function: responseToJSON],
+        caseless: [Object],
+        read: [Function],
+        body: [Object] },
+     body: { acquired: false, id: 4, link: null, name: 'New Keyboard' },
+     jar: RequestJar { _jar: [Object] },
+     url: 'http://127.0.0.1:5000/wishes',
+     responseTime: 4.086063 } }
+    ✓ should have 'Created' status code
+
+
+  6 passing (60ms)
+  1 failing
+
+  1) GET /wishes should have valid JSON as answer:
+     AssertionError: expected body to match JSON schema {
+  "type": "object",
+  "required": [
+    "wishes"
+  ],
+  "properties": {
+    "wishes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "acquired": {
+            "type": "boolean"
+          },
+          "id": {
+            "type": "integer"
+          },
+          "link": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}.
+-----
+ error: Invalid type: null (expected string).
+ data path: /wishes/2/link.
+ schema path: /properties/wishes/items/properties/link/type.
+
+
+
+
+npm ERR! Test failed.  See above for more details.
+```
+
+The interesting part is this:
+
+> 1) GET /wishes should have valid JSON as answer:
+> data path: /wishes/2/link.
+> error: Invalid type: null (expected string).
+
+So the test on JSON schema is failing because `link` is null (we didn't specify
+any in our POST, remember!), and we told the schema it need to be a string.
+Wow, honnestly, tests are really powerful even when we're simply writing them!
+
+Thanks StackOverflow again: <http://stackoverflow.com/questions/16241333/specify-a-value-can-be-a-string-or-null-with-json-schema#16241482>
+
+If we change the previous test to:
+
+```
+  it("should have valid JSON as answer", function () {
+    return expect(apiResponse).to.have.schema({
+      "type": "object",
+      "required": ["wishes"],
+      "properties": {
+        "wishes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "acquired": { "type": "boolean" },
+              "id": { "type": "integer" },
+              "link": { "type": ["string","null"] },
+              "name": { "type": ["string","null"] }
+            }
+          }
+        }
+      }
+    });
+  });
+```
+
+The test passes again, because we specified that link and name can be a string
+OR null. Yet it doesn't ensure that we have one or the other; both shouldn't be
+able to be null, and that makes up for another test that we'll see later.
+
+Just to make sure, we're going to add "name" to the main test case and test
+edge cases later. Add to this Header and JSON checking to check the "correct"
+case fully.
+
+let's also add strict checks on fields that we can predict
+
+```
+describe("Basic POST on /wishes", function() {
+  var apiResponse;
+
+  before(function (){
+    newWish = {
+      name: "New Keyboard",
+      link: "http://www.thekeyboardwaffleiron.com/"
+    };
+    apiResponse = chakram.post("http://127.0.0.1:5000/wishes", newWish);
+    return apiResponse;
+  });
+
+  it("should have status code 201", function () {
+    return expect(apiResponse).to.have.status(201);
+  });
+  it("should have 'application/json' as Content-Type", function () {
+    return expect(apiResponse).to.have.header("Content-Type",
+      "application/json")
+  });
+  it("should have a 'Server' header", function () {
+    return expect(apiResponse).to.have.header("Server");
+  });
+  it("should have a 'Date' header", function () {
+    return expect(apiResponse).to.have.header("Date");
+  });
+  it("should have a 'Content-Length' header", function () {
+    return expect(apiResponse).to.have.header("Content-Length");
+  });
+  it("should have valid JSON in body", function () {
+    return expect(apiResponse).to.have.schema({
+      "type": "object",
+      "required": ["acquired", "id", "link", "name"],
+      "properties": {
+        "acquired": { "type": "boolean" },
+        "id":       { "type": "integer" },
+        "link":     { "type": ["string"] },
+        "name":     { "type": ["string"] }
+      }
+    });
+  });
+  it("should have correct name", function () {
+    return expect(apiResponse).to.have.json("name", "New Keyboard");
+  });
+  it("should have correct link", function () {
+    return expect(apiResponse).to.have.json("link", "http://www.thekeyboardwaffleiron.com/");
+  });
+  it("should have a non-acquired status", function () {
+    return expect(apiResponse).to.have.json("acquired", false);
+  });
+});
+```
+
+We're starting to have a really nice test suite (I renamed a few):
+
+```
+└#master> npm test
+
+> willish-test@1.0.0 test /home/horgix/work/willish/tests
+> mocha
+
+
+
+  GET on /wishes
+    ✓ should have status code 200
+    ✓ should have 'application/json' as Content-Type
+    ✓ should have 'Server' header
+    ✓ should have 'Date' header
+    ✓ should have 'Content-Length' header
+    ✓ should have valid JSON in body
+
+  Basic POST on /wishes
+    ✓ should have status code 201
+    ✓ should have 'application/json' as Content-Type
+    ✓ should have a 'Server' header
+    ✓ should have a 'Date' header
+    ✓ should have a 'Content-Length' header
+    ✓ should have valid JSON in body
+    ✓ should have correct name
+    ✓ should have correct link
+    ✓ should have a non-acquired status
+
+
+  15 passing (71ms)
+```
+
+let's now check for bad cases.
+Let's start with the case were we provide neither name or link, which should
+error with 422
+
+```
+describe(" POST on /wishes without name or link", function() {
+  var apiResponse;
+
+  before(function (){
+    newWish = {};
+    apiResponse = chakram.post("http://127.0.0.1:5000/wishes", newWish);
+    return apiResponse;
+  });
+
+  it("should have status code 422", function () {
+    return expect(apiResponse).to.have.status(422);
+  });
+  it("should have 'application/json' as Content-Type", function () {
+    return expect(apiResponse).to.have.header("Content-Type",
+      "application/json")
+  });
+  it("should have error declaration as JSON in body", function () {
+    return expect(apiResponse).to.have.schema({
+      "type": "object",
+      "required": ["error"],
+      "properties": {
+        "error": { "type": "string" }
+      }
+    });
+  });
+});
+```
+
+And with the case were we do not send "application/json" as Content-Type, which
+sould result in a 400 error
+
+```
+describe("POST on /wishes without 'application/json' Content-Type", function() {
+  var apiResponse;
+
+  before(function (){
+    newWish = {
+      name: "New Keyboard",
+      link: "http://www.thekeyboardwaffleiron.com/"
+    };
+    apiResponse = chakram.post(
+      "http://127.0.0.1:5000/wishes",
+      newWish,
+      { headers: {"Content-Type": "invalid/contenttype"}}
+    );
+    return apiResponse;
+  });
+
+  it("should have status code 400", function () {
+    return expect(apiResponse).to.have.status(400);
+  });
+  it("should have 'application/json' as Content-Type", function () {
+    return expect(apiResponse).to.have.header("Content-Type",
+      "application/json")
+  });
+  it("should have error declaration as JSON in body", function () {
+    return expect(apiResponse).to.have.schema({
+      "type": "object",
+      "required": ["error"],
+      "properties": {
+        "error": { "type": "string" }
+      }
+    });
+  });
+});
+```
+
+Nice! Our tests are starting to look good:
+
+```
+└#master> npm test
+
+> willish-test@1.0.0 test /home/horgix/work/willish/tests
+> mocha
+
+
+
+  GET on /wishes
+    ✓ should have status code 200
+    ✓ should have 'application/json' as Content-Type
+    ✓ should have 'Server' header
+    ✓ should have 'Date' header
+    ✓ should have 'Content-Length' header
+    ✓ should have valid JSON in body
+
+  Basic POST on /wishes
+    ✓ should have status code 201
+    ✓ should have 'application/json' as Content-Type
+    ✓ should have a 'Server' header
+    ✓ should have a 'Date' header
+    ✓ should have a 'Content-Length' header
+    ✓ should have valid JSON in body
+    ✓ should have correct name
+    ✓ should have correct link
+    ✓ should have a non-acquired status
+
+  POST on /wishes without name or link
+    ✓ should have status code 422
+    ✓ should have 'application/json' as Content-Type
+    ✓ should have error declaration as JSON in body
+
+  POST on /wishes without 'application/json' Content-Type
+    ✓ should have status code 400
+    ✓ should have 'application/json' as Content-Type
+    ✓ should have error declaration as JSON in body
+
+
+  21 passing (73ms)
+```
 
 
 
@@ -2226,7 +2672,9 @@ We'll now add tests for the POST function.
 
 
 
-
+- Name in before function
+- no need to return
+- no link AND name null
 
 
 add check on raw `/`
