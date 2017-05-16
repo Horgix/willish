@@ -37,8 +37,8 @@ describe("GET on /wishes", function() {
             "properties": {
               "acquired": { "type": "boolean" },
               "id": { "type": "integer" },
-              "link": { "type": "string" },
-              "name": { "type": "string" }
+              "link": { "type": ["string","null"] },
+              "name": { "type": ["string","null"] }
             }
           }
         }
