@@ -1,7 +1,7 @@
 var chakram = require("chakram"),
   expect = chakram.expect;
 
-describe("GET /wishes", function() {
+describe("GET on /wishes", function() {
   var apiResponse;
 
   before(function (){
@@ -9,10 +9,10 @@ describe("GET /wishes", function() {
     return apiResponse;
   });
 
-  it("should have success status code", function () {
+  it("should have status code 200", function () {
     return expect(apiResponse).to.have.status(200);
   });
-  it("should have correct 'Content-Type' header", function () {
+  it("should have 'application/json' as Content-Type", function () {
     return expect(apiResponse).to.have.header("Content-Type",
       "application/json")
   });
@@ -25,7 +25,7 @@ describe("GET /wishes", function() {
   it("should have 'Content-Length' header", function () {
     return expect(apiResponse).to.have.header("Content-Length");
   });
-  it("should have valid JSON as answer", function () {
+  it("should have valid JSON in body", function () {
     return expect(apiResponse).to.have.schema({
       "type": "object",
       "required": ["wishes"],
@@ -52,3 +52,5 @@ describe("GET /wishes", function() {
   // - incorrect request !
   // - wishes with and without trailing slash
   // shouldn't leak too much server info
+  // HTTP version
+  // Status Message (Created, OK, etc)
