@@ -98,6 +98,33 @@ describe("Basic valid POST on /wishes", function() {
   });
 });
 
+describe("POST on /wishes without name or link", function() {
+  var apiResponse;
+
+  before(function (){
+    newWish = {};
+    apiResponse = chakram.post("http://127.0.0.1:5000/wishes", newWish);
+    return apiResponse;
+  });
+
+  it("should have status code 422", function () {
+    return expect(apiResponse).to.have.status(422);
+  });
+  it("should have 'application/json' as Content-Type", function () {
+    return expect(apiResponse).to.have.header("Content-Type",
+      "application/json")
+  });
+  it("should have error declaration as JSON in body", function () {
+    return expect(apiResponse).to.have.schema({
+      "type": "object",
+      "required": ["error"],
+      "properties": {
+        "error": { "type": "string" }
+      }
+    });
+  });
+});
+
 
   // TODO:
   // - incorrect request !
