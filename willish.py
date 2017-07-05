@@ -43,7 +43,7 @@ def add_wish():
     json = request.get_json()
     if json is None:
         abort(400)
-    if 'name' not in json and 'link' not in json:
+    if not isinstance(json, dict) or ('name' not in json and 'link' not in json):
         # TODO : Maybe add error details if Debug is enabled?
         abort(422)
     global max_id
