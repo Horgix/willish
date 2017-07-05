@@ -66,6 +66,10 @@ def bad_request(error):
 def unprocessable_entity(error):
     return make_response(jsonify({'error': str(error)}), 422)
 
+#@app.errorhandler(500)
+#def internal_server_error(error):
+#    return make_response(jsonify({'error': str(error)}), 500)
+
 @app.route('/')
 def index():
     return "Hello, World!"
