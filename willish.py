@@ -27,8 +27,10 @@ def get_wishes():
 
 @app.route('/wishes/<int:wish_id>', methods=['GET'])
 def get_wish(wish_id):
+    if wish_id == 0:
+        abort(404)
     try:
-        return jsonify({'wish': wishes[wish_id]})
+        return jsonify(wishes[wish_id - 1])
     except IndexError:
         abort(404)
 
