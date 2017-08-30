@@ -2666,6 +2666,1042 @@ Nice! Our tests are starting to look good:
   21 passing (73ms)
 ```
 
+commit 47a24a4c147abf9e3ca5efa3f82b510161badca7
+
+As I went to implement the test of unparseable JSON, something interesting
+happened:
+
+```
+describe("POST on /wishes with unparseable JSON", function() {
+  var apiResponse;
+
+  before(function (){
+    // Note the missing closing curly bracket and the fact that it's a string
+    newWish = '{ name: "New Keyboard", link: "http://www.thekeyboardwaffleiron.com/"';
+    apiResponse = chakram.post(
+      "http://127.0.0.1:5000/wishes",
+      newWish
+    );
+    return apiResponse;
+  });
+
+  it("should have status code 400", function () {
+    return expect(apiResponse).to.have.status(400);
+  });
+  it("should have 'application/json' as Content-Type", function () {
+    return expect(apiResponse).to.have.header("Content-Type",
+      "application/json")
+  });
+  it("should have error declaration as JSON in body", function () {
+    return expect(apiResponse).to.have.schema({
+      "type": "object",
+      "required": ["error"],
+      "properties": {
+        "error": { "type": "string" }
+      }
+    });
+  });
+});
+```
+
+Make sure to note the "newWish" content : it's a string that is a JSON without
+a closing curly bracket. Invalid and unparseable JSON!
+Let's run it
+
+```
+  POST on /wishes with unparseable JSON
+    1) should have status code 400
+    2) should have 'application/json' as Content-Type
+    3) should have error declaration as JSON in body
+
+[...]
+
+  1) POST on /wishes with unparseable JSON should have status code 400:
+     AssertionError: expected status code 500 to equal 400
+
+
+  2) POST on /wishes with unparseable JSON should have 'application/json' as Content-Type:
+     AssertionError: expected header Content-Type with value text/html; charset=utf-8 to match application/json
+
+
+  3) POST on /wishes with unparseable JSON should have error declaration as JSON in body:
+     AssertionError: expected body to match JSON schema {
+  "type": "object",
+  "required": [
+    "error"
+  ],
+  "properties": {
+    "error": {
+      "type": "string"
+    }
+  }
+}.
+-----
+ error: Invalid type: string (expected object).
+ data path: .
+ schema path: /type.
+```
+
+Wow, 3 fails on 3 tests, that hurts!
+
+1. We got a 500 error back instead of the expected 400
+2. We got some content in text/html instead of application/json
+3. We didn't get a JSON that matched what we wanted as a schema since, well,
+   it's html.
+
+If you analyze it a bit... we have a 500 error (1), which we didn't rewrite the
+handler for yet, which generates the default error message in html (2) which
+fails to match the JSON schema (3).
+
+Why the hell do we have a 500 error?
+
+The logs for the server are the following ones:
+
+```
+127.0.0.1 - - [16/May/2017 19:06:28] "POST /wishes HTTP/1.1" 500 -
+Traceback (most recent call last):
+  File "/home/horgix/work/willish/venv/lib/python3.6/site-packages/flask/app.py", line 1997, in __call__
+    return self.wsgi_app(environ, start_response)
+  File "/home/horgix/work/willish/venv/lib/python3.6/site-packages/flask/app.py", line 1985, in wsgi_app
+    response = self.handle_exception(e)
+  File "/home/horgix/work/willish/venv/lib/python3.6/site-packages/flask/app.py", line 1540, in handle_exception
+    reraise(exc_type, exc_value, tb)
+  File "/home/horgix/work/willish/venv/lib/python3.6/site-packages/flask/_compat.py", line 33, in reraise
+    raise value
+  File "/home/horgix/work/willish/venv/lib/python3.6/site-packages/flask/app.py", line 1982, in wsgi_app
+    response = self.full_dispatch_request()
+  File "/home/horgix/work/willish/venv/lib/python3.6/site-packages/flask/app.py", line 1614, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "/home/horgix/work/willish/venv/lib/python3.6/site-packages/flask/app.py", line 1517, in handle_user_exception
+    reraise(exc_type, exc_value, tb)
+  File "/home/horgix/work/willish/venv/lib/python3.6/site-packages/flask/_compat.py", line 33, in reraise
+    raise value
+  File "/home/horgix/work/willish/venv/lib/python3.6/site-packages/flask/app.py", line 1612, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "/home/horgix/work/willish/venv/lib/python3.6/site-packages/flask/app.py", line 1598, in dispatch_request
+    return self.view_functions[rule.endpoint](**req.view_args)
+  File "/home/horgix/work/willish/willish.py", line 54, in add_wish
+    'name': json.get('name'),
+AttributeError: 'str' object has no attribute 'get'
+```
+
+why the hell is it calling the json.get('name')? As a reminder, here's the code
+atm:
+
+```
+@app.route('/wishes', methods=['POST'])
+def add_wish():
+    json = request.get_json()
+    if json is None:
+        abort(400)
+    if 'name' not in json and 'link' not in json:
+        abort(422)
+    global max_id
+    max_id += 1
+    new_id = max_id
+    new_wish = {
+            'id': max_id,
+            'name': json.get('name'),
+            'link': json.get('link'),
+            'acquired': False
+            }
+    wishes.append(new_wish)
+    return jsonify(new_wish), 201
+```
+
+We should never reach the part where json.get('name') gets called, it should
+exit straight away on this:
+
+```
+    json = request.get_json()
+    if json is None:
+        abort(400)
+```
+
+But it doesn't. if we add a `print(json)` just before the condition it shows...
+
+```
+{ name: "New Keyboard", link: "http://www.thekeyboardwaffleiron.com/"```
+```
+
+The `get_json()` didn't fail, and sent us a plain string!
+
+just to be sure...
+
+```
+@app.route('/wishes', methods=['POST'])
+def add_wish():
+    json = request.get_json()
+    print("Failed wih type: " + str(type(json)))
+```
+
+```
+Failed wih type: <class 'str'>
+```
+
+Wait. We checked that kind of stuff when we were still testing the API with
+curl, so what changed?
+
+let's print a bit more.
+
+
+```
+@app.route('/wishes', methods=['POST'])
+def add_wish():
+    print("Full request: " + str(request))
+    print("Request data: " + str(request.data))
+    print("Request data type: " + str(type(request.data)))
+    json = request.get_json()
+    print("Parsed json data type: " + str(type(json)))
+    if json is None:
+        abort(400)
+[...]
+```
+
+And test with curl and chakram:
+
+```
+└#master> curl -i -H "Content-Type: application/json" -X POST -d '{"name":"New keyboard' http://localhost:5000/wishes
+HTTP/1.0 400 BAD REQUEST
+Content-Type: application/json
+Content-Length: 122
+Server: Werkzeug/0.12.1 Python/3.6.1
+Date: Sun, 28 May 2017 19:10:04 GMT
+
+{
+  "error": "400 Bad Request: Failed to decode JSON object: Unterminated string starting at: line 1 column 9 (char 8)"
+}
+```
+
+and server side:
+
+```
+Full request: <Request 'http://localhost:5000/wishes' [POST]>
+Request data: b'{"name":"New keyboard'
+Request data type: <class 'bytes'>
+127.0.0.1 - - [28/May/2017 21:10:38] "POST /wishes HTTP/1.1" 400 -
+```
+
+Note that the json parsed stuff never got printed since it failed correctly and
+stopped there
+
+```npm test
+  POST on /wishes with unparseable JSON
+    1) should have status code 400
+    2) should have 'application/json' as Content-Type
+    3) should have error declaration as JSON in body
+
+
+  0 passing (56ms)
+  3 failing
+
+  1) POST on /wishes with unparseable JSON should have status code 400:
+     AssertionError: expected status code 500 to equal 400
+  
+
+  2) POST on /wishes with unparseable JSON should have 'application/json' as Content-Type:
+     AssertionError: expected header Content-Type with value text/html; charset=utf-8 to match application/json
+  
+
+  3) POST on /wishes with unparseable JSON should have error declaration as JSON in body:
+     AssertionError: expected body to match JSON schema {
+  "type": "object",
+  "required": [
+    "error"
+  ],
+  "properties": {
+    "error": {
+      "type": "string"
+    }
+  }
+}.
+-----
+ error: Invalid type: string (expected object).
+ data path: .
+ schema path: /type.
+```
+
+
+```
+Full request: <Request 'http://127.0.0.1:5000/wishes' [POST]>
+Request data: b'"{\\"name\\": \\"New Keyboard\\", \\"link\\": \\"http://www.thekeyboardwaffleiron.com/\\""'
+Request data type: <class 'bytes'>
+Parsed json data type: <class 'str'>
+127.0.0.1 - - [28/May/2017 21:11:18] "POST /wishes HTTP/1.1" 500 -
+Traceback (most recent call last):
+  File "/home/horgix/work/willish/venv/lib/python3.6/site-packages/flask/app.py", line 1997, in __call__
+    return self.wsgi_app(environ, start_response)
+  File "/home/horgix/work/willish/venv/lib/python3.6/site-packages/flask/app.py", line 1985, in wsgi_app
+    response = self.handle_exception(e)
+  File "/home/horgix/work/willish/venv/lib/python3.6/site-packages/flask/app.py", line 1540, in handle_exception
+    reraise(exc_type, exc_value, tb)
+  File "/home/horgix/work/willish/venv/lib/python3.6/site-packages/flask/_compat.py", line 33, in reraise
+    raise value
+  File "/home/horgix/work/willish/venv/lib/python3.6/site-packages/flask/app.py", line 1982, in wsgi_app
+    response = self.full_dispatch_request()
+  File "/home/horgix/work/willish/venv/lib/python3.6/site-packages/flask/app.py", line 1614, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "/home/horgix/work/willish/venv/lib/python3.6/site-packages/flask/app.py", line 1517, in handle_user_exception
+    reraise(exc_type, exc_value, tb)
+  File "/home/horgix/work/willish/venv/lib/python3.6/site-packages/flask/_compat.py", line 33, in reraise
+    raise value
+  File "/home/horgix/work/willish/venv/lib/python3.6/site-packages/flask/app.py", line 1612, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "/home/horgix/work/willish/venv/lib/python3.6/site-packages/flask/app.py", line 1598, in dispatch_request
+    return self.view_functions[rule.endpoint](**req.view_args)
+  File "/home/horgix/work/willish/willish.py", line 57, in add_wish
+    'name': json.get('name'),
+AttributeError: 'str' object has no attribute 'get'
+```
+
+The difference is quite interesting: chakram (requests actually) chose to make
+the string a valid JSON type by enclosing my invalid json in double quotes.
+And actually, since it's valid JSON, `get_json()` from flask it totally able to
+parse it; hey, it's just a string which is a valid JSON object!
+
+So. 2 things to learn here:
+
+1. We need to adress this unpredicted case in our code and throw a proper error
+  (422) when we get **valid JSON** but which **cannot be parsed as a dict** and
+  thus cannot be checked against `'name' not in json` and `'link' not in json`
+  since the parsed object resulting of the `get_json()` operation is just a
+  string that doesn't implement the `get()` operator. So we need to check if
+  `json` is actually an instance of a dict, since it can also be a plain bool
+  (valid json type too)
+2. We need to split our test case in 2:
+    - One that will send only a plain string or bool or whatever, which is
+      valid json but unexpected parsed type (that will result in a 422)
+    - One that will send unparseable, invalid JSON (that will result in a 400
+      and that we were looking to test in the first place)
+
+Let's adress 1:
+
+```
+@app.route('/wishes', methods=['POST'])
+def add_wish():
+    json = request.get_json()
+    if json is None:
+        abort(400)
+    if not isinstance(json, dict) or ('name' not in json and 'link' not in json):
+        # TODO : Maybe add error details if Debug is enabled?
+        abort(422)
+```
+
+I actually thing that json-schema (as used in chakram to check JSON format in
+request) may be of use here in the app to check if the JSON received has
+requested fields, since this condition is becoming quite long. However I'm not
+sure it's able to define stuff like "ensure there is either this field or this
+one" like we do with name and link.
+
+Now adress 2:
+
+First, the test with a plain string, valid JSON
+
+```
+describe("POST on /wishes with only a string in JSON", function() {
+  var apiResponse;
+
+  before(function (){
+    // Note the missing closing curly bracket and the fact that it's a string
+    newWish = 'This is valid JSON since it is only a string, but is not a valid data format for this POST';
+    apiResponse = chakram.post(
+      "http://127.0.0.1:5000/wishes",
+      newWish
+    );
+    return apiResponse;
+  });
+
+  it("should have status code 422", function () {
+    return expect(apiResponse).to.have.status(422);
+  });
+  it("should have 'application/json' as Content-Type", function () {
+    return expect(apiResponse).to.have.header("Content-Type",
+      "application/json")
+  });
+  it("should have error declaration as JSON in body", function () {
+    return expect(apiResponse).to.have.schema({
+      "type": "object",
+      "required": ["error"],
+      "properties": {
+        "error": { "type": "string" }
+      }
+    });
+  });
+});
+```
+
+```
+  POST on /wishes with only a string in JSON
+    ✓ should have status code 422
+    ✓ should have 'application/json' as Content-Type
+    ✓ should have error declaration as JSON in body
+```
+
+Yay. Now the second test, with a totally unparseable JSON object.
+
+How can we build it? Or more precisely, why in the first place this request:
+
+
+```
+    newWish = '{"name": "New Keyboard", "link": "http://www.thekeyboardwaffleiron.com/"';
+    apiResponse = chakram.post(
+      "http://127.0.0.1:5000/wishes",
+      newWish
+    );
+```
+
+was transformed in:
+
+```
+Full request: <Request 'http://127.0.0.1:5000/wishes' [POST]>
+Request data: b'"{\\"name\\": \\"New Keyboard\\", \\"link\\": \\"http://www.thekeyboardwaffleiron.com/\\""'
+```
+
+Let's take a look at the chakram documentation:
+
+http://dareid.github.io/chakram/jsdoc/module-chakram.html#.post
+```
+
+staticmodule:chakram.post(url, data, params){Promise}
+methods.js, line 116
+    Perform HTTP POST request
+    Name 	Type 	Description
+    url 	string 	fully qualified url
+    data 	Object 	a JSON serializable object (unless json is set to false in params, in which case this should be a buffer or string)
+    params 	Object 	optional additional request options, see the popular request library for options
+```
+
+Hmm, I guess that "JSON serializable" means it will serialize it into valid
+json, hence the addition of double quotes and escaping of my original string?
+But it doesn't tell it. It says methods.js, line 116... let's take a look
+
+https://github.com/dareid/chakram/blob/03486e90ca22ce0791b8fb03d1266942b328ff80/lib/methods.js#L116
+```
+exports.post = function (url, data, params) {
+    return exports.request('POST', url, extendWithData(data, params));
+};
+```
+
+Okay it doesn't do anything special and resort on request. Let's take a look at
+request doc then :D
+
+https://github.com/request/request#requestoptions-callback
+
+> `body` - entity body for PATCH, POST and PUT requests. Must be a `Buffer`,
+> `String` or `ReadStream`. If `json` is `true`, then `body` must be a
+> JSON-serializable object.
+
+> `json` - sets `body` to JSON representation of value and adds `Content-type:
+> application/json` header. Additionally, parses the response body as JSON.
+
+Okay so it looks like this "json" parameter is set, so `request` parses the
+string and make a JSON object out of it, in addition to setting the
+content-type automatically. We don't want this JSON parameter (but will have to
+set the Content-Type ourselves). But.... wait... I didn't set this json param
+anywhere and it doesn't looks like a default.
+
+Remember the "Okay it doesn't do anything special" about chakram.post a few
+lines ago? Let's take a look again.
+
+```
+exports.post = function (url, data, params) {
+    return exports.request('POST', url, extendWithData(data, params));
+};
+```
+
+Did you see it? This nasty `exports.request` . What's exports?
+
+https://github.com/dareid/chakram/blob/03486e90ca22ce0791b8fb03d1266942b328ff80/lib/methods.js#L5
+```
+var exports = module.exports = {};
+```
+
+and a few lines later...
+
+```
+exports.request = function (method, url, params) {
+    var options = extend({
+        url: url,
+        method: method,
+        json: true
+    }, params || {} );
+```
+
+This is where the "json" param is set to true.
+
+So, set it to false!
+
+```
+before(function (){
+  // Note the missing closing curly bracket and the fact that it's a string
+  newWish = '{"name": "New Keyboard", "link": "http://www.thekeyboardwaffleiron.com/"';
+  apiResponse = chakram.post(
+    "http://127.0.0.1:5000/wishes",
+    newWish,
+    params={"json": false}
+  );
+  return apiResponse;
+});
+```
+
+However this will make the request *without* the "Content-Type" header since
+that was the "json" param that made it being set automatically. The "no
+content-type header" is already check by the "invalid content-type" actually.
+Maybe we'll test it explicitely but that's not the point here. Just a quick
+note, I discovered while doing this that by default curl set a
+application/x-www-form-urlencoded Content-Type header by default,m and that you
+can **remove** a header sent by curl with this :
+
+```
+curl -i -H "Content-Type:" -X POST -d '{"name":"New keyboard' http://localhost:5000/wishes
+```
+
+Back to our business, we need to set Content-Type header explicitely. When
+done, the full test looks like this:
+
+```
+describe("POST on /wishes with invalid JSON", function() {
+  var apiResponse;
+
+  before(function (){
+    // Note the missing closing curly bracket and the fact that it's a string
+    newWish = '{"name": "New Keyboard", "link": "http://www.thekeyboardwaffleiron.com/"';
+    apiResponse = chakram.post(
+      "http://127.0.0.1:5000/wishes",
+      newWish,
+      param = {
+        "json": false,
+        "headers": {"Content-Type": "application/json"}
+      }
+    );
+    return apiResponse;
+  });
+
+  it("should have status code 400", function () {
+    return expect(apiResponse).to.have.status(400);
+  });
+  it("should have 'application/json' as Content-Type", function () {
+    return expect(apiResponse).to.have.header("Content-Type",
+      "application/json")
+  });
+  it("should have error declaration as JSON in body", function () {
+    return expect(apiResponse).to.have.schema({
+      "type": "object",
+      "required": ["error"],
+      "properties": {
+        "error": { "type": "string" }
+      }
+    });
+  });
+});
+```
+
+Let's see how it goes.
+
+
+```
+  POST on /wishes with invalid JSON
+    ✓ should have status code 400
+    ✓ should have 'application/json' as Content-Type
+    1) should have error declaration as JSON in body
+
+
+  26 passing (73ms)
+  1 failing
+
+  1) POST on /wishes with invalid JSON should have error declaration as JSON in body:
+     AssertionError: expected body to match JSON schema {
+  "type": "object",
+  "required": [
+    "error"
+  ],
+  "properties": {
+    "error": {
+      "type": "string"
+    }
+  }
+}.
+-----
+ error: Invalid type: string (expected object).
+ data path: .
+ schema path: /type.
+```
+
+Ok so it fails with a 400 as expected (we sent an invalid json). But why the
+fuck does it fail on the json schema?
+
+Oh yeah, request again.
+> `json` - sets `body` to JSON representation of value and adds `Content-type:
+> application/json` header. **Additionally, parses the response body as JSON.**
+
+And indeed:
+
+https://github.com/request/request/blob/master/request.js#L1152
+```
+    if (self._json) {
+      try {
+response.body = JSON.parse(response.body, self._jsonReviver)
+```
+
+it will only try to parse the response body as JSON if we said that it was a
+JSON request in the first place...
+
+And you know what? Let's open a feature request for that.
+
+<https://github.com/request/request/issues/2692>
+
+However, it looks like the lib `request` is no longer maintained (latest coming
+was on Apreil 19th, it was a README fix, and we are on June 21st...), which
+imho is really wtf and sad and one of the reason I dislike Javascript.
+Whatever, since I'll not get any fix merged upstream (no response to date to my
+Issue, even if I suggested to PR the solution), we'll just get a quickfix in
+our test for now.
+
+So. `expect(apiResponse).to.have.schema` is actually using the `body` field of
+the `apiResponse` promise response value :
+<https://github.com/dareid/chakram/blob/master/lib/assertions/schema.js>
+
+We actually need to modify this body. However, since it's a promise, we can't
+just do something like `apiResponse.body = JSON.parse(apiResponse.body)` since,
+well, it's the promise, not its value.
+
+To parse the JSON body, we'll directly chain another promise to the original
+POST which is assigned to `apiResponse` :
+
+```
+    apiResponse = chakram.post(
+      "http://127.0.0.1:5000/wishes",
+      newWish,
+      param = {
+        "json": false,
+        "json_response": true,
+        "headers": {"Content-Type": "application/json"}
+      }
+    ).then(function(value) {
+      value.body = JSON.parse(value.body);
+      return value;
+    }, function(reason) {
+      return reason;
+    });
+```
+
+We can actually check by a simple log in our test function that is parses the
+body:
+
+```
+  it("should have error declaration as JSON in body", function () {
+    apiResponse.then(function(result) {
+      console.log(result.body instanceof Object);
+    });
+    //apiResponse.value.body = JSON.parse(apiResponse.value.body);
+    return expect(apiResponse).to.have.schema({
+      "type": "object",
+      "required": ["error"],
+      "properties": {
+        "error": { "type": "string" }
+      }
+    });
+  });
+```
+
+Note the `console.log(result.body instanceof Object);`. Without our promise
+parsing the JSON, this logs `false` since it's a plain string, but with our
+promise, it logs `true` :)
+
+
+# If we add something, can we get it as expected ?
+
+Let's check that.
+
+```
+describe("Full wish addition", function() {
+  var apiResponse;
+
+  before(function (){
+    newWish = {
+      name: "19959ca5-ad72-487a-9e6a-f4ac8cf06a9b"
+    };
+    // Add a new wish
+    apiResponse = chakram.post("http://127.0.0.1:5000/wishes", newWish).
+      then(function(value) {
+        // ... get its ID from POST response
+        new_id = value.body['id'];
+        // ... then try to GET it by its ID
+        new_get = chakram.get("http://127.0.0.1:5000/wishes/" + new_id)
+        return new_get;
+    }, function(reason) {
+      return reason;
+    });
+    return apiResponse;
+  });
+
+  it("should have status code 200", function () {
+    return expect(apiResponse).to.have.status(200);
+  });
+  it("should have 'application/json' as Content-Type", function () {
+    return expect(apiResponse).to.have.header("Content-Type",
+      "application/json")
+  });
+  it("should have a 'Server' header", function () {
+    return expect(apiResponse).to.have.header("Server");
+  });
+  it("should have a 'Date' header", function () {
+    return expect(apiResponse).to.have.header("Date");
+  });
+  it("should have a 'Content-Length' header", function () {
+    return expect(apiResponse).to.have.header("Content-Length");
+  });
+  it("should have valid JSON in body", function () {
+    return expect(apiResponse).to.have.schema({
+      "type": "object",
+      "required": ["acquired", "id", "link", "name"],
+      "properties": {
+        "acquired": { "type": "boolean" },
+        "id":       { "type": "integer" },
+        "link":     { "type": ["string"] },
+        "name":     { "type": ["string"] }
+      }
+    });
+  });
+  it("should have correct name", function () {
+    return expect(apiResponse).to.have.json("name", "19959ca5-ad72-487a-9e6a-f4ac8cf06a9b");
+  });
+});
+```
+
+So we are adding a wish, then chaining it with the getting of the ID in the
+POST response, and then a get of this ID to the API. We should get a 200, and
+the same wish, right ? To ensure it's the same, i'm assigning an uuid to id and
+checking it.
+
+Aaaand... FAIl
+
+```
+  Full wish addition
+    1) should have status code 200
+    ✓ should have 'application/json' as Content-Type
+    ✓ should have a 'Server' header
+    ✓ should have a 'Date' header
+    ✓ should have a 'Content-Length' header
+    2) should have valid JSON in body
+    3) should have correct name
+
+
+  31 passing (81ms)
+  3 failing
+
+  1) Full wish addition should have status code 200:
+     AssertionError: expected status code 404 to equal 200
+  
+
+  2) Full wish addition should have valid JSON in body:
+     AssertionError: expected body to match JSON schema {
+  "type": "object",
+  "required": [
+    "acquired",
+    "id",
+    "link",
+    "name"
+  ],
+  "properties": {
+    "acquired": {
+      "type": "boolean"
+    },
+    "id": {
+      "type": "integer"
+    },
+    "link": {
+      "type": [
+        "string"
+      ]
+    },
+    "name": {
+      "type": [
+        "string"
+      ]
+    }
+  }
+}.
+-----
+ error: Missing required property: acquired.
+ data path: .
+ schema path: /required/0.
+-----
+ error: Missing required property: id.
+ data path: .
+ schema path: /required/1.
+-----
+ error: Missing required property: link.
+ data path: .
+ schema path: /required/2.
+-----
+ error: Missing required property: name.
+ data path: .
+ schema path: /required/3.
+  
+
+  3) Full wish addition should have correct name:
+     Error: could not find path 'name' in object {"error":"404 Not Found: The requested URL was not found on the server.  If you entered the URL manually please check your spelling and try again."}
+      at Object.get (node_modules/chakram/lib/utils/objectPath.js:5:19)
+      at Assertion.<anonymous> (node_modules/chakram/lib/assertions/json.js:33:27)
+      at Assertion.ctx.(anonymous function) (node_modules/chai/lib/chai/utils/addMethod.js:41:25)
+      at node_modules/chai-as-promised/lib/chai-as-promised.js:308:26
+      at _fulfilled (node_modules/q/q.js:854:54)
+      at self.promiseDispatch.done (node_modules/q/q.js:883:30)
+      at Promise.promise.promiseDispatch (node_modules/q/q.js:816:13)
+      at node_modules/q/q.js:624:44
+      at runSingle (node_modules/q/q.js:137:13)
+      at flush (node_modules/q/q.js:125:13)
+      at _combinedTickCallback (internal/process/next_tick.js:95:7)
+      at process._tickCallback (internal/process/next_tick.js:161:9)
+```
+
+This is actually the bug I left intentionally :
+
+> Fine ! (At least we believe it. I intentionally introduced a bug to be fixed
+> later and which will give us a reason for writing good tests)
+
+We are getting a 404 here. Look at the `get_wish`:
+
+```
+@app.route('/wishes/<int:wish_id>', methods=['GET'])
+def get_wish(wish_id):
+    try:
+        return jsonify({'wish': wishes[wish_id]})
+    except IndexError:
+        abort(404)
+```
+
+And the examples we are storing start to ID 1. But Python array indexes start
+at 0. So here, we store a new wish, let's say it gets ID 3, is pushed to the
+list (to the position `2` since it starts indexing at 0), and then we try to
+get ID 3 which... doesn't exist.
+
+This is a trivial bug, and I wanted to let it there from the beginning to show
+you that tests **are** important and can help detect bugs easily.
+
+We're almost on the TDD road here :)
+
+Let's fix it quickly and... in a dirty way, since anyway ou data storage is
+shit. We have 3 choices:
+
+- Start our indexes at 0
+- Do a real search in the list to find the right ID instead of accessing it
+  directly
+- Add a dirty `- 1` to the ID that is asked before retrieving it from the list
+
+
+... I'm not proud of this, but anyway this will be reworked as soon as we
+change storage to a real database. Let's go for the "-1 solution". Just make
+sure someone is not asking for id 0, or this will access the last element and
+the list and success (hello python)
+
+```
+@app.route('/wishes/<int:wish_id>', methods=['GET'])
+def get_wish(wish_id):
+    if wish_id == 0:
+        abort(404)
+    try:
+        return jsonify({'wish': wishes[wish_id - 1]})
+    except IndexError:
+        abort(404)
+```
+
+And while we're at it... This is not really RESTful to specify `{'wish':
+<object>}`; we should directly return the object. Let's do that!
+
+get_wish is now:
+
+```
+@app.route('/wishes/<int:wish_id>', methods=['GET'])
+def get_wish(wish_id):
+    if wish_id == 0:
+        abort(404)
+    try:
+        return jsonify(wishes[wish_id - 1])
+    except IndexError:
+        abort(404)
+ ```
+
+also, our test is now :
+
+```
+describe("GET of newly added wish", function() {
+  var apiResponse;
+
+  before(function (){
+    newWish = {
+      name: "19959ca5-ad72-487a-9e6a-f4ac8cf06a9b"
+    };
+    // Add a new wish
+    apiResponse = chakram.post("http://127.0.0.1:5000/wishes", newWish).
+      then(function(value) {
+        // ... get its ID from POST response
+        new_id = value.body['id'];
+        // ... then try to GET it by its ID
+        new_get = chakram.get("http://127.0.0.1:5000/wishes/" + new_id)
+        return new_get;
+    }, function(reason) {
+      return reason;
+    });
+    return apiResponse;
+  });
+
+  it("should have status code 200", function () {
+    return expect(apiResponse).to.have.status(200);
+  });
+  it("should have 'application/json' as Content-Type", function () {
+    return expect(apiResponse).to.have.header("Content-Type",
+      "application/json")
+  });
+  it("should have a 'Server' header", function () {
+    return expect(apiResponse).to.have.header("Server");
+  });
+  it("should have a 'Date' header", function () {
+    return expect(apiResponse).to.have.header("Date");
+  });
+  it("should have a 'Content-Length' header", function () {
+    return expect(apiResponse).to.have.header("Content-Length");
+  });
+  it("should have valid JSON in body", function () {
+    console.log(apiResponse)
+    return expect(apiResponse).to.have.schema({
+      "type": "object",
+      "required": ["acquired", "id", "link", "name"],
+      "properties": {
+        "acquired": { "type": "boolean" },
+        "id":       { "type": "integer" },
+        "link":     { "type": ["string", "null"] },
+        "name":     { "type": ["string", "null"] }
+      }
+    });
+  });
+  it("should have correct name", function () {
+    return expect(apiResponse).to.have.json("name", "19959ca5-ad72-487a-9e6a-f4ac8cf06a9b");
+  });
+});
+```
+
+fae559d8e9e5aaa5f402265f8b8d02479a01bf75 
+
+note the "null" possibility for link and name, just like for the
+get_wishes (the list). Talking about that, we have the weird `{'wishes':
+<real_response>}` in get_wishes to. let's fix that
+
+```
+@app.route('/wishes', methods=['GET'])
+def get_wishes():
+    return jsonify(wishes)
+```
+
+And the test too obviously
+
+From:
+
+ it("should have valid JSON in body", function () {
+    return expect(apiResponse).to.have.schema({
+      "type": "object",
+      "required": ["wishes"],
+      "properties": {
+        "wishes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "acquired": { "type": "boolean" },
+              "id": { "type": "integer" },
+              "link": { "type": ["string", "null"] },
+              "name": { "type": ["string", "null"] }
+            }
+          }
+        }
+      }
+    });
+  });
+```
+
+To
+```
+  it("should have valid JSON in body", function () {
+    return expect(apiResponse).to.have.schema({
+      "wishes": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "acquired": { "type": "boolean" },
+            "id": { "type": "integer" },
+            "link": { "type": ["string", "null"] },
+            "name": { "type": ["string", "null"] }
+          }
+        }
+      }
+    });
+  });
+```
+`
+Goood, that's a lot of change but they were needed !
+
+
+
+
+
+# Delete
+
+So, let's go back to our code.
+We have implemented get list, get wish by id, and post. Let's add delete which
+should be straightforward
+
+
+Actually, we have a choice to do there. Do we really want the item deleted, or
+do we want to just mark it as "deleted" to retrieve it later on?
+
+Eh, let's just mark it as deleted. Anyway we are already making sure that it's
+not reassigning wishes ID with the "max_id" here
+
+```
+@app.route('/wishes/<int:wish_id>', methods=['DELETE'])
+def delete_wish(wish_id):
+    try:
+        wishes[wish_id]['deleted'] = True
+    except IndexError:
+        abort(404)
+    return jsonify({'result': True})
+```
+
+We are setting the "deleted" field of the wish to "True". This suppose that we
+also update our existing test data to add this field and set it to False at
+creation !
+
+so add_wish now add the new wish like this :
+
+```
+    new_wish = {
+            'id': max_id,
+            'name': json.get('name'),
+            'link': json.get('link'),
+            'acquired': False,
+            'deleted': False
+            }
+```
+
+Note the `deleted` here.
+
+And we also want to make sure that the `get_wishes` list doesn't comprise
+deleted elements.
+
+```
+@app.route('/wishes', methods=['GET'])
+def get_wishes():
+    return jsonify([wish for wish in wishes if not wish['deleted']])
+
+```
+
+I'm using Python's TODO ADD LINK list comprehension here to build a list
+comprised of wishes that are not deleted. I really like Python :D
+
+
+
 
 
 
@@ -2675,6 +3711,8 @@ Nice! Our tests are starting to look good:
 - Name in before function
 - no need to return
 - no link AND name null
+
+- test: add item, remove on, add again, make sure we don't get the same id
 
 
 add check on raw `/`
