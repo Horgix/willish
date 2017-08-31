@@ -3703,6 +3703,106 @@ comprised of wishes that are not deleted. I really like Python :D
 
 
 
+I'm now testing the DELETE functionnality
+I want to make sure that the task I wanted to delete has been correctly deleted
+and that I didn't delete another one
+
+```
+
+describe("DELETE of newly added wish", function() {
+  var apiResponse;
+
+  before(function (){
+    newWish = {
+      name: "34740ac6-e396-443f-877d-b8252092ca11"
+    };
+    // Add a new wish
+    apiResponse = chakram.post("http://127.0.0.1:5000/wishes", newWish).
+      then(function(value) {
+        // ... get its ID from POST response
+        new_id = value.body['id'];
+        // ... then try to GET it by its ID
+        new_delete = chakram.delete("http://127.0.0.1:5000/wishes/" + new_id)
+        return new_delete;
+    }, function(reason) {
+      return reason;
+    });
+    return apiResponse;
+  });
+
+  it("should have status code 200", function () {
+    return expect(apiResponse).to.have.status(200);
+  });
+  it("should have 'application/json' as Content-Type", function () {
+    return expect(apiResponse).to.have.header("Content-Type",
+      "application/json")
+  });
+  it("should have a 'Server' header", function () {
+    return expect(apiResponse).to.have.header("Server");
+  });
+  it("should have a 'Date' header", function () {
+    return expect(apiResponse).to.have.header("Date");
+  });
+  it("should have a 'Content-Length' header", function () {
+    return expect(apiResponse).to.have.header("Content-Length");
+  });
+  it("should have valid JSON in body", function () {
+    return expect(apiResponse).to.have.schema({
+      "type": "object",
+      "required": ["acquired", "id", "link", "name", "deleted"],
+      "properties": {
+        "acquired": { "type": "boolean" },
+        "id":       { "type": "integer" },
+        "link":     { "type": ["string", "null"] },
+        "name":     { "type": ["string", "null"] },
+        "deleted":  { "type": "boolean" }
+      }
+    });
+  });
+  it("should have correct name", function () {
+    return expect(apiResponse).to.have.json("name", "34740ac6-e396-443f-877d-b8252092ca11");
+  });
+  it("should be marked as deleted", function () {
+    return expect(apiResponse).to.have.json("deleted", true);
+  });
+});
+```
+
+The schema here matters. I indeed am finally returning the full object with
+"delete" set to true to the client, so I can check I deleted the good one.
+This implies modifications on code side of course:
+
+
+```
+@app.route('/wishes/<int:wish_id>', methods=['DELETE'])
+def delete_wish(wish_id):
+    if wish_id == 0:
+        abort(404)
+    try:
+        wishes[wish_id - 1]['deleted'] = True
+    except IndexError:
+        abort(404)
+    return jsonify(wishes[wish_id - 1])
+```
+
+
+THe `-1` matters, just like for the GET. And the test of `0` case too
+
+```
+ DELETE of newly added wish
+    ✓ should have status code 200
+    ✓ should have 'application/json' as Content-Type
+    ✓ should have a 'Server' header
+    ✓ should have a 'Date' header
+    ✓ should have a 'Content-Length' header
+    ✓ should have valid JSON in body
+    ✓ should have correct name
+    ✓ should be marked as deleted
+```
+
+Good news is, our test of DELETE passes :)
+
+
 
 
 
@@ -3717,3 +3817,5 @@ comprised of wishes that are not deleted. I really like Python :D
 
 add check on raw `/`
 TODO2 npm venv
+
+Note : .gitignore (idea and venv)
