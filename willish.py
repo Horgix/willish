@@ -85,7 +85,7 @@ def unprocessable_entity(error):
 
 @app.route('/')
 def index():
-    return "Hello, World!"
+    return "Hello, I'm the Willish API :)"
 
 if __name__ == '__main__':
     app.run(debug=True)
