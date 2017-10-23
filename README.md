@@ -3803,8 +3803,7 @@ THe `-1` matters, just like for the GET. And the test of `0` case too
 Good news is, our test of DELETE passes :)
 
 
-
-
+c3309a96d135f39a2c3df6fa2b65f63b169617fa
 
 
 
@@ -3819,3 +3818,17 @@ add check on raw `/`
 TODO2 npm venv
 
 Note : .gitignore (idea and venv)
+
+
+
+
+
+
+# Future
+
+Ok so. Until here, we had a poor "in memory database" with incremental integers
+as IDs.
+
+We *really* need to change this.
+
+At the beginning, I honnestly planned to store everything in some Postgres
