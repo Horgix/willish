@@ -1,35 +1,35 @@
 Warning, this is being developed, not even alpha yet.
 
-http://flask.pocoo.org/docs/0.12/patterns/errorpages/
-http://flask.pocoo.org/docs/0.12/errorhandling/
-http://flask.pocoo.org/snippets/83/
+<http://flask.pocoo.org/docs/0.12/patterns/errorpages/>
+<http://flask.pocoo.org/docs/0.12/errorhandling/>
+<http://flask.pocoo.org/snippets/83/>
 
 # Methods
 
-GET   http://example.com/wishes
-Obtain information about a resource
-Retrieve wishes list
+- `GET   http://example.com/wishes`
+    - Obtain information about a resource
+    - Retrieve wishes list
 
-GET   http://example.com/wishes/123
-Obtain information about a resource
-Retrieve wish #123
+- `GET   http://example.com/wishes/123`
+    - Obtain information about a resource
+    - Retrieve wish #123
 
-POST  http://example.com/wishes
-Create a new resource
-Create a new wish, from data provided with the request
+- `POST  http://example.com/wishes`
+    - Create a new resource
+    - Create a new wish, from data provided with the request
 
-PUT   http://example.com/wishes/123
-Update a resource
-Update wish #123, from data provided with the request
+- `PUT   http://example.com/wishes/123`
+    - Update a resource
+    - Update wish #123, from data provided with the request
 
-DELETE http://example.com/wishes/123
-Delete a resource
-Delete wish #123
+- `DELETE http://example.com/wishes/123`
+    - Delete a resource
+    - Delete wish #123
 
 # API versioning
 
 This will be taken care of in a later release, with proper version in
-accepted-content, etc., not in URL
+Accepted-Content, etc., not in URL
 
 # Methods
 
@@ -55,20 +55,20 @@ Ideas :
 
 # Virtualenv
 
-    make venv
+```
+make venv
+```
 
 # Dependencies
 
 `requirements.txt` contains a pip freeze
 
-
-
 # What I did
 
 `pip install flask`
 
-```
-└> pip install flask
+```raw
+$ pip install flask
 Collecting flask
   Downloading Flask-0.12.1-py2.py3-none-any.whl (82kB)
     100% |████████████████████████████████| 92kB 4.6MB/s
@@ -92,12 +92,12 @@ Installing collected packages: click, itsdangerous, Werkzeug, MarkupSafe, Jinja2
 Successfully installed Jinja2-2.9.6 MarkupSafe-1.0 Werkzeug-0.12.1 click-6.7 flask-0.12.1 itsdangerous-0.24
 ```
 
-afdd9879e7dc104ab6fa707103e957c553624467
+`afdd9879e7dc104ab6fa707103e957c553624467`
 
-chmod +x willish.py
+`chmod +x willish.py`
 
-```
-└> ./willish.py
+```raw
+$ ./willish.py
  * Running on http://127.0.0.1:5000/ (Press CTRL+C to quit)
  * Restarting with stat
  * Debugger is active!
@@ -105,26 +105,27 @@ chmod +x willish.py
 127.0.0.1 - - [03/May/2017 13:31:17] "GET / HTTP/1.1" 200 -
 ```
 
-```
-└> curl localhost:5000
+```raw
+$ curl localhost:5000
 Hello, World!%
 ```
 
-http://flask.pocoo.org/docs/0.12/quickstart/#http-methods
+<http://flask.pocoo.org/docs/0.12/quickstart/#http-methods>
 and it's already handling HEAD for us :D
 
 # GET /wishes
 
 Add details about `curl -i`
 
-```
-└> curl -i localhost:5000/wishes                                                               [148]~15:37 Wed,May 03┘
+```raw
+$ curl -i localhost:5000/wishes
 HTTP/1.0 200 OK
 Content-Type: application/json
 Content-Length: 357
 Server: Werkzeug/0.12.1 Python/3.6.0
 Date: Wed, 03 May 2017 13:37:17 GMT
-
+```
+```json
 {
   "wishes": [
     {
@@ -143,8 +144,8 @@ Date: Wed, 03 May 2017 13:37:17 GMT
 }
 ```
 
-```
-└#master> ./willish.py
+```raw
+$ ./willish.py
  * Running on http://127.0.0.1:5000/ (Press CTRL+C to quit)
  * Restarting with stat
  * Debugger is active!
@@ -156,8 +157,8 @@ Date: Wed, 03 May 2017 13:37:17 GMT
 
 btw 404
 
-```
-└> curl -i localhost:5000/wishes/1                                                               [7]~15:36 Wed,May 03┘
+```raw
+$ curl -i localhost:5000/wishes/1
 HTTP/1.0 404 NOT FOUND
 Content-Type: text/html
 Content-Length: 233
@@ -172,23 +173,23 @@ Date: Wed, 03 May 2017 13:37:03 GMT
 
 # Add GET /wishes/<wish_id>
 
+<http://flask.pocoo.org/docs/0.12/quickstart/#variable-rules>
 
-http://flask.pocoo.org/docs/0.12/quickstart/#variable-rules
-
-```
+```python
 @app.route('/wishes/<int:wish_id>', methods=['GET'])
 def get_wish(wish_id):
     return jsonify({'wish': wishes[wish_id]})
 ```
 
-```
-└> curl -i localhost:5000/wishes/1
+```raw
+$ curl -i localhost:5000/wishes/1
 HTTP/1.0 200 OK
 Content-Type: application/json
 Content-Length: 142
 Server: Werkzeug/0.12.1 Python/3.6.0
 Date: Wed, 03 May 2017 13:57:24 GMT
-
+```
+```json
 {
   "wish": {
     "acquired": false,
@@ -204,15 +205,16 @@ later and which will give us a reason for writing good tests)
 Now an unknown id...
 
 
-```
-└> curl -i localhost:5000/wishes/2                                                             [148]~15:57 Wed,May 03┘
+```raw
+$ curl -i localhost:5000/wishes/2                                                             [148]~15:57 Wed,May 03┘
 HTTP/1.0 500 INTERNAL SERVER ERROR
 Content-Type: text/html; charset=utf-8
 X-XSS-Protection: 0
 Connection: close
 Server: Werkzeug/0.12.1 Python/3.6.0
 Date: Wed, 03 May 2017 13:57:44 GMT
-
+```
+```html
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
   "http://www.w3.org/TR/html4/loose.dtd">
 <html>
@@ -534,7 +536,7 @@ IMAGE1
 and on server side :
 
 ```
-└#master> ./willish.py                                                                         [148]~15:57 Wed,May 03┘
+$ ./willish.py                                                                         [148]~15:57 Wed,May 03┘
  * Running on http://127.0.0.1:5000/ (Press CTRL+C to quit)
  * Restarting with stat
  * Debugger is active!
@@ -584,7 +586,7 @@ if __name__ == '__main__':
 We just get the bare Error :
 
 ```
-└> curl -i localhost:5000/wishes/2                                                             [148]~15:59 Wed,May 03┘
+$ curl -i localhost:5000/wishes/2                                                             [148]~15:59 Wed,May 03┘
 HTTP/1.0 500 INTERNAL SERVER ERROR
 Content-Type: text/html
 Content-Length: 291
@@ -617,7 +619,7 @@ def get_wish(wish_id):
 ```
 
 ```
-└#master> ./willish.py
+$ ./willish.py
 
  * Running on http://127.0.0.1:5000/ (Press CTRL+C to quit)
  * Restarting with stat
@@ -629,7 +631,7 @@ def get_wish(wish_id):
 And it's working :
 
 ```
-└> curl -i localhost:5000/wishes/2
+$ curl -i localhost:5000/wishes/2
 HTTP/1.0 200 OK
 Content-Type: application/json
 Content-Length: 33
@@ -662,7 +664,7 @@ abort(404)
 and you're done :)
 
 ```
-└#master> ./willish.py
+$ ./willish.py
 
  * Running on http://127.0.0.1:5000/ (Press CTRL+C to quit)
  * Restarting with stat
@@ -672,7 +674,7 @@ and you're done :)
 ```
 
 ```
-└> curl -i localhost:5000/wishes/2                                                                   16:03 Wed,May 03┘
+$ curl -i localhost:5000/wishes/2                                                                   16:03 Wed,May 03┘
 HTTP/1.0 404 NOT FOUND
 Content-Type: text/html
 Content-Length: 233
@@ -703,7 +705,7 @@ def not_found(error):
 which seems to be sending json:
 
 ```
-└> curl -i localhost:5000/wishes/2
+$ curl -i localhost:5000/wishes/2
 HTTP/1.0 200 OK
 Content-Type: application/json
 Content-Length: 27
@@ -738,7 +740,7 @@ and adding the `make_response` to the `from flask import ...` stuff
 and it's working fine :
 
 ```
-└> curl -i localhost:5000/wishes/2
+$ curl -i localhost:5000/wishes/2
 HTTP/1.0 404 NOT FOUND
 Content-Type: application/json
 Content-Length: 27
@@ -753,7 +755,7 @@ Date: Wed, 03 May 2017 15:42:33 GMT
 Note the HTTP status code, the content type and the body. No longer 200, no
 longer HTML, win !
 
-For more informations on error handling and JSON outputs:
+For more information on error handling and JSON outputs:
 
 - <http://flask.pocoo.org/docs/0.12/patterns/apierrors/>
 - <http://flask.pocoo.org/snippets/83/>
@@ -784,7 +786,7 @@ conform requests ? Should we just ignore it ? I'm going for the ignore thing,
 it will be way easier, but we'll have to document it with our API so people can
 expect it.
 
-## Implem
+## Implementation
 
 - add request to from flask import ...
 
@@ -812,7 +814,7 @@ def add_wish():
 Let's see how it behaves :
 
 ```
-└> curl -i -H "Content-Type: application/json" -X POST -d '{"name":"New keyboard"}' http://localhost:5000/wishes
+$ curl -i -H "Content-Type: application/json" -X POST -d '{"name":"New keyboard"}' http://localhost:5000/wishes
 HTTP/1.0 200 OK
 Content-Type: application/json
 Content-Length: 3
@@ -824,7 +826,7 @@ Date: Thu, 04 May 2017 16:56:17 GMT
 
 
 ```
-└#master> ./willish.py
+$ ./willish.py
  * Running on http://127.0.0.1:5000/ (Press CTRL+C to quit)
  * Restarting with stat
  * Debugger is active!
@@ -840,7 +842,7 @@ someone sends us a request with `application/json` `Content-Type` but without a
 real JSON object in data ? Or an invalid one? Let's try!
 
 ```
-└> curl -i -H "Content-Type: application/json" -X POST -d '{"name":"New keyboard' http://localhost:5000/wishes
+$ curl -i -H "Content-Type: application/json" -X POST -d '{"name":"New keyboard' http://localhost:5000/wishes
 HTTP/1.0 200 OK
 Content-Type: application/json
 Content-Length: 3
@@ -851,7 +853,7 @@ Date: Thu, 04 May 2017 16:54:29 GMT
 ```
 
 ```
-└#master> ./willish.py
+$ ./willish.py
  * Running on http://127.0.0.1:5000/ (Press CTRL+C to quit)
  * Restarting with stat
  * Debugger is active!
@@ -871,7 +873,7 @@ But there is another field, `json`, that can saves us !
 > The get_json() method should be used instead.
 
 Ok, we'll use `get_json()` to access fields, but  looks like we can use `json`
-to assert for parseable json.
+to assert for parse-able json.
 
 Let's verify that.
 
@@ -883,7 +885,7 @@ def add_wish():
 ```
 
 ```
-└> curl -i -H "Content-Type: application/json" -X POST -d '{"name":"New keyboard"}' http://localhost:5000/wishes
+$ curl -i -H "Content-Type: application/json" -X POST -d '{"name":"New keyboard"}' http://localhost:5000/wishes
 HTTP/1.0 200 OK
 Content-Type: application/json
 Content-Length: 3
@@ -894,7 +896,7 @@ Date: Thu, 04 May 2017 17:02:42 GMT
 ```
 
 ```
-└#master> ./willish.py
+$ ./willish.py
  * Running on http://127.0.0.1:5000/ (Press CTRL+C to quit)
  * Restarting with stat
  * Debugger is active!
@@ -907,7 +909,7 @@ Ok so valid JSON works as expected.
 Let's try invalid JSON
 
 ```
-└> curl -i -H "Content-Type: application/json" -X POST -d '{"name":"New keyboard' http://localhost:5000/wishes
+$ curl -i -H "Content-Type: application/json" -X POST -d '{"name":"New keyboard' http://localhost:5000/wishes
 HTTP/1.0 400 BAD REQUEST
 Content-Type: text/html
 Content-Length: 203
@@ -921,7 +923,7 @@ Date: Thu, 04 May 2017 17:03:34 GMT
 ```
 
 ```
-└#master> ./willish.py
+$ ./willish.py
  * Running on http://127.0.0.1:5000/ (Press CTRL+C to quit)
  * Restarting with stat
  * Debugger is active!
@@ -943,7 +945,7 @@ def bad_request(error):
 ```
 
 ```
-└> curl -i -H "Content-Type: application/json" -X POST -d '{"name":"New keyboard' http://localhost:5000/wishes
+$ curl -i -H "Content-Type: application/json" -X POST -d '{"name":"New keyboard' http://localhost:5000/wishes
 HTTP/1.0 400 BAD REQUEST
 Content-Type: application/json
 Content-Length: 29
@@ -956,7 +958,7 @@ Date: Thu, 04 May 2017 17:11:09 GMT
 ```
 
 ```
-└#master> ./willish.py
+$ ./willish.py
  * Running on http://127.0.0.1:5000/ (Press CTRL+C to quit)
  * Restarting with stat
  * Debugger is active!
@@ -973,7 +975,7 @@ Wait. Maybe this is because we run the app with `app.run(debug=False)` ? Let's
 try with `debug=True` and without our errorhandler.
 
 ```
-└> curl -i -H "Content-Type: application/json" -X POST -d '{"name":"New keyboard' http://localhost:5000/wishes
+$ curl -i -H "Content-Type: application/json" -X POST -d '{"name":"New keyboard' http://localhost:5000/wishes
 HTTP/1.0 400 BAD REQUEST
 Content-Type: text/html
 Content-Length: 192
@@ -987,34 +989,34 @@ Date: Thu, 04 May 2017 17:13:16 GMT
 ```
 
 ```
-└#master> ./willish.py
+$ ./willish.py
  * Running on http://127.0.0.1:5000/ (Press CTRL+C to quit)
 127.0.0.1 - - [04/May/2017 19:14:28] "POST /wishes HTTP/1.1" 400 -
 
 ```
 
-Ok so the error is handled diferently if the debug mode is enabled or not
+Ok so the error is handled differently if the debug mode is enabled or not
 (makes sense).
 
 The difference can be found in the `flask/wrappers.py` file, line 167 :
 
 ```python
-    def on_json_loading_failed(self, e):
-        """Called if decoding of the JSON data failed.  The return value of
-        this method is used by :meth:`get_json` when an error occurred.  The
-        default implementation just raises a :class:`BadRequest` exception.
+def on_json_loading_failed(self, e):
+    """Called if decoding of the JSON data failed.  The return value of
+    this method is used by :meth:`get_json` when an error occurred.  The
+    default implementation just raises a :class:`BadRequest` exception.
 
-        .. versionchanged:: 0.10
-           Removed buggy previous behavior of generating a random JSON
-           response.  If you want that behavior back you can trivially
-           add it by subclassing.
+    .. versionchanged:: 0.10
+       Removed buggy previous behavior of generating a random JSON
+       response.  If you want that behavior back you can trivially
+       add it by subclassing.
 
-        .. versionadded:: 0.8
-        """
-        ctx = _request_ctx_stack.top
-        if ctx is not None and ctx.app.config.get('DEBUG', False):
-            raise BadRequest('Failed to decode JSON object: {0}'.format(e))
-        raise BadRequest()
+    .. versionadded:: 0.8
+    """
+    ctx = _request_ctx_stack.top
+    if ctx is not None and ctx.app.config.get('DEBUG', False):
+        raise BadRequest('Failed to decode JSON object: {0}'.format(e))
+    raise BadRequest()
 ```
 
 I actually have to thank JetBrain's PyCharm for finding this, the debugger with
@@ -1034,7 +1036,7 @@ def bad_request(error):
 In `debug=False`:
 
 ```
-└> curl -i -H "Content-Type: application/json" -X POST -d '{"name":"New keyboard' http://localhost:5000/wishes
+$ curl -i -H "Content-Type: application/json" -X POST -d '{"name":"New keyboard' http://localhost:5000/wishes
 HTTP/1.0 400 BAD REQUEST
 Content-Type: application/json
 Content-Length: 111
@@ -1084,16 +1086,17 @@ def not_found(error):
     return make_response(jsonify({'error': str(error)}), 404)
 ```
 
-So now insted of
+So now instead of
 
-```json
-└> curl -i localhost:5000/wishes/4
+```raw
+$ curl -i localhost:5000/wishes/4
 HTTP/1.0 404 NOT FOUND
 Content-Type: application/json
 Content-Length: 27
 Server: Werkzeug/0.12.1 Python/3.6.0
 Date: Thu, 04 May 2017 22:02:00 GMT
-
+```
+```json
 {
   "error": "Not found"
 }
@@ -1101,14 +1104,15 @@ Date: Thu, 04 May 2017 22:02:00 GMT
 
 we get :
 
-```json
-└> curl -i localhost:5000/wishes/4
+```raw
+$ curl -i localhost:5000/wishes/4
 HTTP/1.0 404 NOT FOUND
 Content-Type: application/json
 Content-Length: 154
 Server: Werkzeug/0.12.1 Python/3.6.0
 Date: Thu, 04 May 2017 22:03:43 GMT
-
+```
+```json
 {
   "error": "404 Not Found: The requested URL was not found on the server.  If you entered the URL manually please check your spelling and try again."
 }
@@ -1124,9 +1128,9 @@ Well. At the beginning we wanted to implement the POST request and ended up
 tuning errors. Let's get back to the POST itself.
 
 After thinking about it, we'll need the JSON data anyway and we'll have to call
-`get_json()` so let's subsitute `request.json` by `request.get_json()` right
+`get_json()` so let's substitute `request.json` by `request.get_json()` right
 away.
-Reminder: we were just checking that JSON was parseable, but we also need to
+Reminder: we were just checking that JSON was parse-able, but we also need to
 assert that the `Content-Type` is `application/json`. If it's not, `get_json()`
 will return None so let's check that:
 
@@ -1144,7 +1148,7 @@ def add_wish():
 we end up with
 
 ```
-└> curl -i -H "Content-Type: application/json" -X POST -d '{"name":"New keyboard"}' http://localhost:5000/wishes
+$ curl -i -H "Content-Type: application/json" -X POST -d '{"name":"New keyboard"}' http://localhost:5000/wishes
 HTTP/1.0 200 OK
 Content-Type: application/json
 Content-Length: 29
@@ -1159,7 +1163,7 @@ Date: Fri, 05 May 2017 10:05:09 GMT
 and in case of error in the JSON
 
 ```
-└> curl -i -H "Content-Type: application/json" -X POST -d '{"name":"New keyboard' http://localhost:5000/wishes
+$ curl -i -H "Content-Type: application/json" -X POST -d '{"name":"New keyboard' http://localhost:5000/wishes
 HTTP/1.0 400 BAD REQUEST
 Content-Type: application/json
 Content-Length: 122
@@ -1173,7 +1177,7 @@ Date: Fri, 05 May 2017 10:05:36 GMT
 Now let's check with a bad content-type:
 
 ```
-└> curl -i -H "Content-Type: application/json2" -X POST -d '{"name":"New keyboard"}' http://localhost:5000/wishes
+$ curl -i -H "Content-Type: application/json2" -X POST -d '{"name":"New keyboard"}' http://localhost:5000/wishes
 HTTP/1.0 500 INTERNAL SERVER ERROR
 Content-Type: text/html; charset=utf-8
 X-XSS-Protection: 0
@@ -1233,7 +1237,7 @@ def add_wish():
 ```
 
 ```
-└> curl -i -H "Content-Type: application/json2" -X POST -d '{"name":"New keyboard"}' http://localhost:5000/wishes
+$ curl -i -H "Content-Type: application/json2" -X POST -d '{"name":"New keyboard"}' http://localhost:5000/wishes
 HTTP/1.0 400 BAD REQUEST
 Content-Type: application/json
 Content-Length: 111
@@ -1258,7 +1262,7 @@ Good !
 
 Now we are properly handling:
 
-- Invalid contenttype
+- Invalid Content-Type
 - Invalid JSON
 - Other benefits already listed above
 
@@ -1301,7 +1305,7 @@ def unprocessable_entity(error):
 Let's test it:
 
 ```
-└> curl -i -H "Content-Type: application/json" -X POST -d '{"name2":"New keyboard"}' http://localhost:5000/wishes
+$ curl -i -H "Content-Type: application/json" -X POST -d '{"name2":"New keyboard"}' http://localhost:5000/wishes
 HTTP/1.0 422 UNPROCESSABLE ENTITY
 Content-Type: application/json
 Content-Length: 125
@@ -1351,7 +1355,7 @@ Note a few things:
 - We are returning the object we just created
 
 ```
-└> curl -i -H "Content-Type: application/json" -X POST -d '{"name":"New keyboard"}' http://localhost:5000/wishes
+$ curl -i -H "Content-Type: application/json" -X POST -d '{"name":"New keyboard"}' http://localhost:5000/wishes
 HTTP/1.0 201 CREATED
 Content-Type: application/json
 Content-Length: 81
@@ -1368,10 +1372,10 @@ Date: Fri, 05 May 2017 13:24:14 GMT
 
 ```
 
-Wow, it's working! And we should be able to get it by GETting /wishes :
+Wow, it's working! And we should be able to get it by GET-ing /wishes :
 
 ```
-└> curl -i http://localhost:5000/wishes
+$ curl -i http://localhost:5000/wishes
 HTTP/1.0 200 OK
 Content-Type: application/json
 Content-Length: 464
@@ -1407,7 +1411,7 @@ here and its just a placeholder, which allow stuff like that to happen (not
 stopping  the server from the previous run):
 
 ```
-└> curl -i -H "Content-Type: application/json" -X POST -d '{"link":"http://schwag.archlinux.ca/"}' http://localhost:5000/wishes
+$ curl -i -H "Content-Type: application/json" -X POST -d '{"link":"http://schwag.archlinux.ca/"}' http://localhost:5000/wishes
 HTTP/1.0 201 CREATED
 Content-Type: application/json
 Content-Length: 96
@@ -1423,7 +1427,7 @@ Date: Fri, 05 May 2017 13:30:52 GMT
 ```
 
 ```
-└> curl -i http://localhost:5000/wishes
+$ curl -i http://localhost:5000/wishes
 HTTP/1.0 200 OK
 Content-Type: application/json
 Content-Length: 586
@@ -1524,8 +1528,8 @@ UnboundLocalError: local variable 'max_id' referenced before assignment
 ```
 
 Here, it's more global python knowledge than anything else. Long story short
-(agian), it's due to python scoping and to the fact that we're trying to
-reassign a global variable so we need to specify it explicitely by flagging it
+(again), it's due to python scoping and to the fact that we're trying to
+reassign a global variable so we need to specify it explicitly by flagging it
 as `global`:
 
 ```
@@ -1543,7 +1547,7 @@ as `global`:
 Let's try this :
 
 ```
-└> curl -i -H "Content-Type: application/json" -X POST -d '{"name":"New keyboard"}' http://localhost:5000/wishes
+$ curl -i -H "Content-Type: application/json" -X POST -d '{"name":"New keyboard"}' http://localhost:5000/wishes
 HTTP/1.0 201 CREATED
 Content-Type: application/json
 Content-Length: 80
@@ -1557,7 +1561,7 @@ Date: Fri, 05 May 2017 13:41:52 GMT
   "name": "New keyboard"
 }
 
-└> curl -i -H "Content-Type: application/json" -X POST -d '{"link":"http://schwag.archlinux.ca/"}' http://localhost:5000/wishes
+$ curl -i -H "Content-Type: application/json" -X POST -d '{"link":"http://schwag.archlinux.ca/"}' http://localhost:5000/wishes
 HTTP/1.0 201 CREATED
 Content-Type: application/json
 Content-Length: 95
@@ -1571,7 +1575,7 @@ Date: Fri, 05 May 2017 13:41:55 GMT
   "name": null
 }
 
-└> curl -i http://localhost:5000/wishes
+$ curl -i http://localhost:5000/wishes
 HTTP/1.0 200 OK
 Content-Type: application/json
 Content-Length: 584
@@ -1611,7 +1615,7 @@ Date: Fri, 05 May 2017 13:41:59 GMT
 Yay,it works :)
 We can't just take the greater ID and increment it, else in case of POST, then
 DELETE, then POST, we could re-attribute  the same ID but to a different wish,
-which wwould be a non-sense.
+which would be a non-sense.
 
 commit 32f988d16d0533f17149b1efb86742360ab75e33
 
@@ -1631,7 +1635,7 @@ Below are a few notes on ideas for later :
 - Flask capitalizes http status :(
 - http://flask.pocoo.org/snippets/83/
 - Should we send details of failure reason with error 400 ?
-- 422 in case of unsupported contenttype ?
+- 422 in case of unsupported Content-Type ?
 - Old ids reusability
 
 ## Tests ideas
@@ -1670,7 +1674,7 @@ it's based on :
 
 - http://mochajs.org/ , a test runner (it will run the tests and report them,
   and allow multiple test "executors" to be managed)
-- http://chaijs.com/ , an assertien library which is the "executor" managed by
+- http://chaijs.com/ , an assertion library which is the "executor" managed by
   mocha in context of chakram
 
 ## Beginning
@@ -1680,7 +1684,7 @@ let's create a directory "tests"
     npm install --save-dev chakram mocha  
 
 ```
-└#master> npm list                                                                             [130]~16:28 Fri,May 05┘
+$ npm list                                                                             [130]~16:28 Fri,May 05┘
 /home/horgix/work/willish/tests
 ├─┬ chakram@1.5.0
 │ ├─┬ chai@3.5.0
@@ -1815,7 +1819,7 @@ turns out you have to `npm init` it before, kind of like `virtualenv` creation;
 makes sense.
 
 ```
-└#master> npm init
+$ npm init
 This utility will walk you through creating a package.json file.
 It only covers the most common items, and tries to guess sensible defaults.
 
@@ -1895,7 +1899,7 @@ d81c0233a97a365872942b18988e8def1053e383
 Let's try the chakram example:
 
 ```
-└#master> cat test.js
+$ cat test.js
 var chakram = require('chakram');
 
 describe("Chakram", function() {
@@ -1906,7 +1910,7 @@ describe("Chakram", function() {
 ```
 
 ```
-└#master> mocha .
+$ mocha .
 zsh: command not found: mocha
 ```
 
@@ -1918,7 +1922,7 @@ And you know what ? When we answered "mocha" to the "test command" in "npm
 init", it already put it in the package.json for us! Let's call it
 
 ```
-└#master> npm test
+$ npm test
 
 > willish-test@1.0.0 test /home/horgix/work/willish/tests
 > mocha
@@ -2032,7 +2036,7 @@ describe("Chakram", function() {
 notice the 500 and Content-Type-Wrong-Header. Both checks will fail
 
 ```
-└#master> npm test
+$ npm test
 
 > willish-test@1.0.0 test /home/horgix/work/willish/tests
 > mocha
@@ -2120,7 +2124,7 @@ describe("GET /wishes", function() {
 ```
 
 This "before" function is called once before the tests, not before each, so it
-behaves exactly as what I did befre without this function. What's the
+behaves exactly as what I did before without this function. What's the
 difference ? No idea right now. TODO : check
 
 Here is were we are :
@@ -2159,7 +2163,7 @@ describe("GET /wishes", function() {
 
 
 ```
-└#master> npm test
+$ npm test
 
 > willish-test@1.0.0 test /home/horgix/work/willish/tests
 > mocha
@@ -2224,7 +2228,7 @@ The http://dareid.github.io/chakram/example/dweet/ example provides some POST
 example.
 
 
-Now we're onto something really intesting.
+Now we're onto something really interesting.
 I added the following test:
 
 ```
@@ -2251,7 +2255,7 @@ Well... remember that we can omit name or link?
 That's what we just did. And it works!
 
 ```
-└#master> npm test
+$ npm test
 
 > willish-test@1.0.0 test /home/horgix/work/willish/tests
 > mocha
@@ -2317,7 +2321,7 @@ if we re-run exactly the same tests (the whole tests, GET /wishes + POST)... it
 fails!
 
 ```
-└#master> npm test                                                                                   19:53 Sat,May 13┘
+$ npm test                                                                                   19:53 Sat,May 13┘
 
 > willish-test@1.0.0 test /home/horgix/work/willish/tests
 > mocha
@@ -2426,7 +2430,7 @@ The interesting part is this:
 
 So the test on JSON schema is failing because `link` is null (we didn't specify
 any in our POST, remember!), and we told the schema it need to be a string.
-Wow, honnestly, tests are really powerful even when we're simply writing them!
+Wow, honestly, tests are really powerful even when we're simply writing them!
 
 Thanks StackOverflow again: <http://stackoverflow.com/questions/16241333/specify-a-value-can-be-a-string-or-null-with-json-schema#16241482>
 
@@ -2521,7 +2525,7 @@ describe("Basic POST on /wishes", function() {
 We're starting to have a really nice test suite (I renamed a few):
 
 ```
-└#master> npm test
+$ npm test
 
 > willish-test@1.0.0 test /home/horgix/work/willish/tests
 > mocha
@@ -2585,7 +2589,7 @@ describe(" POST on /wishes without name or link", function() {
 ```
 
 And with the case were we do not send "application/json" as Content-Type, which
-sould result in a 400 error
+should result in a 400 error
 
 ```
 describe("POST on /wishes without 'application/json' Content-Type", function() {
@@ -2626,7 +2630,7 @@ describe("POST on /wishes without 'application/json' Content-Type", function() {
 Nice! Our tests are starting to look good:
 
 ```
-└#master> npm test
+$ npm test
 
 > willish-test@1.0.0 test /home/horgix/work/willish/tests
 > mocha
@@ -2666,7 +2670,7 @@ Nice! Our tests are starting to look good:
   21 passing (73ms)
 ```
 
-commit 47a24a4c147abf9e3ca5efa3f82b510161badca7
+commit `47a24a4c147abf9e3ca5efa3f82b510161badca7`
 
 As I went to implement the test of unparseable JSON, something interesting
 happened:
@@ -2860,14 +2864,15 @@ def add_wish():
 
 And test with curl and chakram:
 
-```
-└#master> curl -i -H "Content-Type: application/json" -X POST -d '{"name":"New keyboard' http://localhost:5000/wishes
+```raw
+$ curl -i -H "Content-Type: application/json" -X POST -d '{"name":"New keyboard' http://localhost:5000/wishes
 HTTP/1.0 400 BAD REQUEST
 Content-Type: application/json
 Content-Length: 122
 Server: Werkzeug/0.12.1 Python/3.6.1
 Date: Sun, 28 May 2017 19:10:04 GMT
-
+```
+```json
 {
   "error": "400 Bad Request: Failed to decode JSON object: Unterminated string starting at: line 1 column 9 (char 8)"
 }
@@ -2875,7 +2880,7 @@ Date: Sun, 28 May 2017 19:10:04 GMT
 
 and server side:
 
-```
+```raw
 Full request: <Request 'http://localhost:5000/wishes' [POST]>
 Request data: b'{"name":"New keyboard'
 Request data type: <class 'bytes'>
@@ -2885,7 +2890,8 @@ Request data type: <class 'bytes'>
 Note that the json parsed stuff never got printed since it failed correctly and
 stopped there
 
-```npm test
+```
+$ npm test
   POST on /wishes with unparseable JSON
     1) should have status code 400
     2) should have 'application/json' as Content-Type
@@ -2922,7 +2928,7 @@ stopped there
 ```
 
 
-```
+```raw
 Full request: <Request 'http://127.0.0.1:5000/wishes' [POST]>
 Request data: b'"{\\"name\\": \\"New Keyboard\\", \\"link\\": \\"http://www.thekeyboardwaffleiron.com/\\""'
 Request data type: <class 'bytes'>
@@ -2961,7 +2967,7 @@ parse it; hey, it's just a string which is a valid JSON object!
 
 So. 2 things to learn here:
 
-1. We need to adress this unpredicted case in our code and throw a proper error
+1. We need to address this unpredicted case in our code and throw a proper error
   (422) when we get **valid JSON** but which **cannot be parsed as a dict** and
   thus cannot be checked against `'name' not in json` and `'link' not in json`
   since the parsed object resulting of the `get_json()` operation is just a
@@ -2974,9 +2980,9 @@ So. 2 things to learn here:
     - One that will send unparseable, invalid JSON (that will result in a 400
       and that we were looking to test in the first place)
 
-Let's adress 1:
+Let's address 1:
 
-```
+```python
 @app.route('/wishes', methods=['POST'])
 def add_wish():
     json = request.get_json()
@@ -2993,11 +2999,11 @@ requested fields, since this condition is becoming quite long. However I'm not
 sure it's able to define stuff like "ensure there is either this field or this
 one" like we do with name and link.
 
-Now adress 2:
+Now address 2:
 
 First, the test with a plain string, valid JSON
 
-```
+```node
 describe("POST on /wishes with only a string in JSON", function() {
   var apiResponse;
 
@@ -3030,7 +3036,7 @@ describe("POST on /wishes with only a string in JSON", function() {
 });
 ```
 
-```
+```raw
   POST on /wishes with only a string in JSON
     ✓ should have status code 422
     ✓ should have 'application/json' as Content-Type
@@ -3042,7 +3048,7 @@ Yay. Now the second test, with a totally unparseable JSON object.
 How can we build it? Or more precisely, why in the first place this request:
 
 
-```
+```node
     newWish = '{"name": "New Keyboard", "link": "http://www.thekeyboardwaffleiron.com/"';
     apiResponse = chakram.post(
       "http://127.0.0.1:5000/wishes",
@@ -3052,16 +3058,16 @@ How can we build it? Or more precisely, why in the first place this request:
 
 was transformed in:
 
-```
+```raw
 Full request: <Request 'http://127.0.0.1:5000/wishes' [POST]>
 Request data: b'"{\\"name\\": \\"New Keyboard\\", \\"link\\": \\"http://www.thekeyboardwaffleiron.com/\\""'
 ```
 
 Let's take a look at the chakram documentation:
 
-http://dareid.github.io/chakram/jsdoc/module-chakram.html#.post
-```
+<http://dareid.github.io/chakram/jsdoc/module-chakram.html#.post>
 
+```
 staticmodule:chakram.post(url, data, params){Promise}
 methods.js, line 116
     Perform HTTP POST request
@@ -3075,7 +3081,7 @@ Hmm, I guess that "JSON serializable" means it will serialize it into valid
 json, hence the addition of double quotes and escaping of my original string?
 But it doesn't tell it. It says methods.js, line 116... let's take a look
 
-https://github.com/dareid/chakram/blob/03486e90ca22ce0791b8fb03d1266942b328ff80/lib/methods.js#L116
+<https://github.com/dareid/chakram/blob/03486e90ca22ce0791b8fb03d1266942b328ff80/lib/methods.js#L116>
 ```
 exports.post = function (url, data, params) {
     return exports.request('POST', url, extendWithData(data, params));
@@ -3085,7 +3091,7 @@ exports.post = function (url, data, params) {
 Okay it doesn't do anything special and resort on request. Let's take a look at
 request doc then :D
 
-https://github.com/request/request#requestoptions-callback
+<https://github.com/request/request#requestoptions-callback>
 
 > `body` - entity body for PATCH, POST and PUT requests. Must be a `Buffer`,
 > `String` or `ReadStream`. If `json` is `true`, then `body` must be a
@@ -3103,7 +3109,7 @@ anywhere and it doesn't looks like a default.
 Remember the "Okay it doesn't do anything special" about chakram.post a few
 lines ago? Let's take a look again.
 
-```
+```node
 exports.post = function (url, data, params) {
     return exports.request('POST', url, extendWithData(data, params));
 };
@@ -3131,7 +3137,7 @@ This is where the "json" param is set to true.
 
 So, set it to false!
 
-```
+```node
 before(function (){
   // Note the missing closing curly bracket and the fact that it's a string
   newWish = '{"name": "New Keyboard", "link": "http://www.thekeyboardwaffleiron.com/"';
@@ -3147,19 +3153,19 @@ before(function (){
 However this will make the request *without* the "Content-Type" header since
 that was the "json" param that made it being set automatically. The "no
 content-type header" is already check by the "invalid content-type" actually.
-Maybe we'll test it explicitely but that's not the point here. Just a quick
+Maybe we'll test it explicitly but that's not the point here. Just a quick
 note, I discovered while doing this that by default curl set a
 application/x-www-form-urlencoded Content-Type header by default,m and that you
 can **remove** a header sent by curl with this :
 
-```
+```raw
 curl -i -H "Content-Type:" -X POST -d '{"name":"New keyboard' http://localhost:5000/wishes
 ```
 
-Back to our business, we need to set Content-Type header explicitely. When
+Back to our business, we need to set Content-Type header explicitly. When
 done, the full test looks like this:
 
-```
+```node
 describe("POST on /wishes with invalid JSON", function() {
   var apiResponse;
 
@@ -3199,7 +3205,7 @@ describe("POST on /wishes with invalid JSON", function() {
 Let's see how it goes.
 
 
-```
+```raw
   POST on /wishes with invalid JSON
     ✓ should have status code 400
     ✓ should have 'application/json' as Content-Type
@@ -3236,7 +3242,7 @@ Oh yeah, request again.
 
 And indeed:
 
-https://github.com/request/request/blob/master/request.js#L1152
+<https://github.com/request/request/blob/master/request.js#L1152>
 ```
     if (self._json) {
       try {
@@ -3251,7 +3257,7 @@ And you know what? Let's open a feature request for that.
 <https://github.com/request/request/issues/2692>
 
 However, it looks like the lib `request` is no longer maintained (latest coming
-was on Apreil 19th, it was a README fix, and we are on June 21st...), which
+was on April 19th, it was a README fix, and we are on June 21st...), which
 imho is really wtf and sad and one of the reason I dislike Javascript.
 Whatever, since I'll not get any fix merged upstream (no response to date to my
 Issue, even if I suggested to PR the solution), we'll just get a quickfix in
@@ -3268,7 +3274,7 @@ well, it's the promise, not its value.
 To parse the JSON body, we'll directly chain another promise to the original
 POST which is assigned to `apiResponse` :
 
-```
+```node
     apiResponse = chakram.post(
       "http://127.0.0.1:5000/wishes",
       newWish,
@@ -3288,7 +3294,7 @@ POST which is assigned to `apiResponse` :
 We can actually check by a simple log in our test function that is parses the
 body:
 
-```
+```node
   it("should have error declaration as JSON in body", function () {
     apiResponse.then(function(result) {
       console.log(result.body instanceof Object);
@@ -3313,7 +3319,7 @@ promise, it logs `true` :)
 
 Let's check that.
 
-```
+```node
 describe("Full wish addition", function() {
   var apiResponse;
 
@@ -3496,7 +3502,7 @@ change storage to a real database. Let's go for the "-1 solution". Just make
 sure someone is not asking for id 0, or this will access the last element and
 the list and success (hello python)
 
-```
+```python
 @app.route('/wishes/<int:wish_id>', methods=['GET'])
 def get_wish(wish_id):
     if wish_id == 0:
@@ -3512,7 +3518,7 @@ And while we're at it... This is not really RESTful to specify `{'wish':
 
 get_wish is now:
 
-```
+```python
 @app.route('/wishes/<int:wish_id>', methods=['GET'])
 def get_wish(wish_id):
     if wish_id == 0:
@@ -3525,7 +3531,7 @@ def get_wish(wish_id):
 
 also, our test is now :
 
-```
+```node
 describe("GET of newly added wish", function() {
   var apiResponse;
 
@@ -3582,13 +3588,13 @@ describe("GET of newly added wish", function() {
 });
 ```
 
-fae559d8e9e5aaa5f402265f8b8d02479a01bf75 
+`fae559d8e9e5aaa5f402265f8b8d02479a01bf75`
 
-note the "null" possibility for link and name, just like for the
+Note the "null" possibility for link and name, just like for the
 get_wishes (the list). Talking about that, we have the weird `{'wishes':
 <real_response>}` in get_wishes to. let's fix that
 
-```
+```python
 @app.route('/wishes', methods=['GET'])
 def get_wishes():
     return jsonify(wishes)
@@ -3598,6 +3604,7 @@ And the test too obviously
 
 From:
 
+```node
  it("should have valid JSON in body", function () {
     return expect(apiResponse).to.have.schema({
       "type": "object",
@@ -3621,7 +3628,8 @@ From:
 ```
 
 To
-```
+
+```node
   it("should have valid JSON in body", function () {
     return expect(apiResponse).to.have.schema({
       "wishes": {
@@ -3639,10 +3647,8 @@ To
     });
   });
 ```
-`
+
 Goood, that's a lot of change but they were needed !
-
-
 
 
 
@@ -3659,7 +3665,7 @@ do we want to just mark it as "deleted" to retrieve it later on?
 Eh, let's just mark it as deleted. Anyway we are already making sure that it's
 not reassigning wishes ID with the "max_id" here
 
-```
+```python
 @app.route('/wishes/<int:wish_id>', methods=['DELETE'])
 def delete_wish(wish_id):
     try:
@@ -3675,14 +3681,14 @@ creation !
 
 so add_wish now add the new wish like this :
 
-```
-    new_wish = {
-            'id': max_id,
-            'name': json.get('name'),
-            'link': json.get('link'),
-            'acquired': False,
-            'deleted': False
-            }
+```python
+new_wish = {
+        'id': max_id,
+        'name': json.get('name'),
+        'link': json.get('link'),
+        'acquired': False,
+        'deleted': False
+        }
 ```
 
 Note the `deleted` here.
@@ -3690,7 +3696,7 @@ Note the `deleted` here.
 And we also want to make sure that the `get_wishes` list doesn't comprise
 deleted elements.
 
-```
+```python
 @app.route('/wishes', methods=['GET'])
 def get_wishes():
     return jsonify([wish for wish in wishes if not wish['deleted']])
@@ -3703,12 +3709,11 @@ comprised of wishes that are not deleted. I really like Python :D
 
 
 
-I'm now testing the DELETE functionnality
+I'm now testing the DELETE functionality
 I want to make sure that the task I wanted to delete has been correctly deleted
 and that I didn't delete another one
 
-```
-
+```node
 describe("DELETE of newly added wish", function() {
   var apiResponse;
 
@@ -3773,7 +3778,7 @@ The schema here matters. I indeed am finally returning the full object with
 This implies modifications on code side of course:
 
 
-```
+```python
 @app.route('/wishes/<int:wish_id>', methods=['DELETE'])
 def delete_wish(wish_id):
     if wish_id == 0:
@@ -3788,7 +3793,7 @@ def delete_wish(wish_id):
 
 THe `-1` matters, just like for the GET. And the test of `0` case too
 
-```
+```raw
  DELETE of newly added wish
     ✓ should have status code 200
     ✓ should have 'application/json' as Content-Type
@@ -3831,4 +3836,4 @@ as IDs.
 
 We *really* need to change this.
 
-At the beginning, I honnestly planned to store everything in some Postgres
+At the beginning, I honestly planned to store everything in some Postgres
