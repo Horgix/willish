@@ -1,6 +1,8 @@
 var chakram = require("chakram"),
   expect = chakram.expect;
 
+// TODO : extract tests in multiple files and include them here
+
 describe("GET on /wishes", function() {
   var apiResponse;
 
