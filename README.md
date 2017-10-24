@@ -4,7 +4,16 @@ Warning, this is being developed, not even alpha yet.
 <http://flask.pocoo.org/docs/0.12/errorhandling/>
 <http://flask.pocoo.org/snippets/83/>
 
+# Introduction
+
+This `README.md` covers all the development process of this appplication.
+It is intended to later be transformed into a blog post of some kind, giving
+people a real world example of the development process of a simple but clean
+app.
+
 # Methods
+
+We're going to define the following endpoints on ou API:
 
 - `GET   http://example.com/wishes`
     - Obtain information about a resource
@@ -43,17 +52,30 @@ Accepted-Content, etc., not in URL
 
 # What's a wish?
 
+First question we have to ask ourselves: **what is a wish**?
+
+It's nice and everything to talk about API, versionning, bla, bla, bla, but we
+have to start from the functionnal (some would say "business") side: what is
+the purpose and the needs of what we're building?
+
+A *Wish* is something we thrive to acquire. Well, you get the point of a
+wishlist I guess.
+
+Let's define a *Wish* as follow:
+
 - `id`: Numeric. Unique identifier. Generated.
-- `name`: String. Wish item name.
-- `link`: String. Link to somewhere the wish can be found.
-- `acquired`: Bool. wish obtention status.
+- `name`: String. *Wish* item name.
+- `link`: String. Link to somewhere the wish can be found/bought.
+- `acquired`: Bool. *Wish* obtention status.
 
-Ideas :
+This may, of course, be expanded later one. Here are some examples:
 
-- price
-- multiple links
+- Price
+- Multiple links
 
 # Virtualenv
+
+Let's dive a bit in the code!
 
 ```
 make venv
@@ -204,9 +226,9 @@ Fine ! (At least we believe it. I intentionally introduced a bug to be fixed
 later and which will give us a reason for writing good tests)
 Now an unknown id...
 
-
 ```raw
-$ curl -i localhost:5000/wishes/2                                                             [148]~15:57 Wed,May 03┘
+$ curl -i localhost:5000/wishes/2
+
 HTTP/1.0 500 INTERNAL SERVER ERROR
 Content-Type: text/html; charset=utf-8
 X-XSS-Protection: 0
@@ -536,7 +558,8 @@ IMAGE1
 and on server side :
 
 ```
-$ ./willish.py                                                                         [148]~15:57 Wed,May 03┘
+$ ./willish.py
+
  * Running on http://127.0.0.1:5000/ (Press CTRL+C to quit)
  * Restarting with stat
  * Debugger is active!
@@ -569,16 +592,16 @@ Traceback (most recent call last):
 IndexError: list index out of range
 ```
 
-But if we change 
+But if we change this:
 
-```
+```python
 if __name__ == '__main__':
     app.run(debug=True)
 ```
 
-to
+to that:
 
-```
+```python
 if __name__ == '__main__':
     app.run(debug=False)
 ```
@@ -586,7 +609,8 @@ if __name__ == '__main__':
 We just get the bare Error :
 
 ```
-$ curl -i localhost:5000/wishes/2                                                             [148]~15:59 Wed,May 03┘
+$ curl -i localhost:5000/wishes/2
+
 HTTP/1.0 500 INTERNAL SERVER ERROR
 Content-Type: text/html
 Content-Length: 291
@@ -609,7 +633,7 @@ Well, we aren't checking that the ID is valid.
 
 # Adding error handling on this
 
-```
+```python
 @app.route('/wishes/<int:wish_id>', methods=['GET'])
 def get_wish(wish_id):
     try:
@@ -618,7 +642,7 @@ def get_wish(wish_id):
         return jsonify({'error': 'index not found'})
 ```
 
-```
+```raw
 $ ./willish.py
 
  * Running on http://127.0.0.1:5000/ (Press CTRL+C to quit)
@@ -630,14 +654,16 @@ $ ./willish.py
 
 And it's working :
 
-```
+```raw
 $ curl -i localhost:5000/wishes/2
+
 HTTP/1.0 200 OK
 Content-Type: application/json
 Content-Length: 33
 Server: Werkzeug/0.12.1 Python/3.6.0
 Date: Wed, 03 May 2017 14:03:13 GMT
-
+```
+```json
 {
   "error": "index not found"
 }
@@ -649,21 +675,21 @@ But it's not really HTTP compliant... 200 code for an error...
 
 Flask to the rescue! `from flask import abort`
 
-Change
+Change this:
 
-```
+```python
 return jsonify({'error': 'index not found'})
 ```
 
-into
+into that:
 
-```
+```python
 abort(404)
 ```
 
 and you're done :)
 
-```
+```raw
 $ ./willish.py
 
  * Running on http://127.0.0.1:5000/ (Press CTRL+C to quit)
@@ -673,14 +699,17 @@ $ ./willish.py
 127.0.0.1 - - [03/May/2017 16:16:51] "GET /wishes/2 HTTP/1.1" 404 -
 ```
 
-```
-$ curl -i localhost:5000/wishes/2                                                                   16:03 Wed,May 03┘
+```raw
+$ curl -i localhost:5000/wishes/2
+
 HTTP/1.0 404 NOT FOUND
 Content-Type: text/html
 Content-Length: 233
 Server: Werkzeug/0.12.1 Python/3.6.0
 Date: Wed, 03 May 2017 14:16:51 GMT
+```
 
+```html
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
 <title>404 Not Found</title>
 <h1>Not Found</h1>
@@ -693,25 +722,27 @@ But sadly, it's still returning HTML, which is bad for a REST API.
 
 # JSON 404
 
-Thanks to flask, we can override the error handler that gets called by
+Thanks to Flask, we can override the error handler that gets called by
 `abort()` :)
 
-```
+```python
 @app.errorhandler(404)
 def not_found(error):
     return jsonify({'error': 'Not found'})
 ```
 
-which seems to be sending json:
+which seems to be sending JSON:
 
-```
+```raw
 $ curl -i localhost:5000/wishes/2
+
 HTTP/1.0 200 OK
 Content-Type: application/json
 Content-Length: 27
 Server: Werkzeug/0.12.1 Python/3.6.0
 Date: Wed, 03 May 2017 14:39:25 GMT
-
+```
+```json
 {
   "error": "Not found"
 }
@@ -727,8 +758,7 @@ Documentation:
 <http://flask.pocoo.org/docs/0.12/api/#flask.Flask.make_response>
 
 
-
-```
+```python
 @app.errorhandler(404)
 def not_found(error):
     return make_response(jsonify({'error': 'Not found'}), 404)
@@ -736,24 +766,25 @@ def not_found(error):
 
 and adding the `make_response` to the `from flask import ...` stuff
 
-
 and it's working fine :
 
-```
+```raw
 $ curl -i localhost:5000/wishes/2
+
 HTTP/1.0 404 NOT FOUND
 Content-Type: application/json
 Content-Length: 27
 Server: Werkzeug/0.12.1 Python/3.6.0
 Date: Wed, 03 May 2017 15:42:33 GMT
-
+```
+```json
 {
   "error": "Not found"
 }
 ```
 
-Note the HTTP status code, the content type and the body. No longer 200, no
-longer HTML, win !
+Note the HTTP status code, the Content-Type header and the body. No longer 200,
+no longer HTML: we won!
 
 For more information on error handling and JSON outputs:
 
@@ -764,27 +795,27 @@ We'll come back on that later I guess.
 
 # POST
 
-This will be a long part, we're entering the really useful part!
+This will be a long part, but we're entering the really useful part!
 
 First we need to ask ourselves this question : what is mandatory in order to
-create a wish ? Reminder, we handle the following attributes right now :
+create a wish? Reminder, we handle the following attributes right now :
 
-- id : this will be generated automatically so we'll not take it from POST
+- `id` : this will be generated automatically so we'll not take it from POST
   request data
-- name : having no name a link probably makes sense
-- link : having a link but no name probably makes sense too
-- acquired : we'll set it to False at creation time, this will not be taken
-  either from POST request data. Would be non sense to add an item we already
-  acquired to an
+- `name` : having a name but no link probably makes sense
+- `link` : having a link but no name probably makes sense too
+- `acquired` : we'll set it to False at creation time, this will not be taken
+  either from POST request data. It would be non sense to add an item we
+  already acquired to a wishlist, wouldn't it?
 
-Sooo, at the end, we require either name or link, and we should fail if none of
-them is in the request. For the rest/REST (what a joke.), it's up to us to
-decide what we do with parameter we don't need, i.e. if a client send us a
-"cake_taste" field or the "id" or "acquired" field which we'll not take into
-account anyway. Should we send an error, forcing the client to send perfectly
-conform requests ? Should we just ignore it ? I'm going for the ignore thing,
-it will be way easier, but we'll have to document it with our API so people can
-expect it.
+Sooo, at the end, we require either `name` or `link`, and we should fail if
+none of them is provided in the request. For the rest/REST (what a joke.), it's
+up to us to decide what we do with parameter we don't need, i.e. if a client
+send us a `cake_taste` field or the `id` or `acquired` field which we'll not
+take into account anyway. Should we send an error, forcing the client to send
+perfectly conform requests? Should we just ignore it? **I'm going for the
+ignore thing**, it will be way easier, but we'll have to document it with our
+API so people can expect it.
 
 ## Implementation
 
@@ -794,8 +825,8 @@ Request doc : http://flask.pocoo.org/docs/0.12/api/#incoming-request-data
 
 ### First
 
-Let's implement something really dumb: we'll just check that provided JSON is
-valid before trying to do anything with the json data.
+Let's implement something really dumb simple: we'll just check that provided JSON is
+valid before trying to do anything with the JSON data.
 
 Flask provides the `is_json` field with following description
 <http://flask.pocoo.org/docs/0.12/api/#flask.Request.is_json> :
@@ -804,17 +835,18 @@ Flask provides the `is_json` field with following description
 > to include JSON data if the mimetype is `application/json` or
 > `application/*+json`.
 
-```
+```python
 @app.route('/wishes', methods=['POST'])
 def add_wish():
     print(request.is_json)
     return jsonify({})
 ```
 
-Let's see how it behaves :
+Let's see how it behaves:
 
 ```
 $ curl -i -H "Content-Type: application/json" -X POST -d '{"name":"New keyboard"}' http://localhost:5000/wishes
+
 HTTP/1.0 200 OK
 Content-Type: application/json
 Content-Length: 3
@@ -827,6 +859,7 @@ Date: Thu, 04 May 2017 16:56:17 GMT
 
 ```
 $ ./willish.py
+
  * Running on http://127.0.0.1:5000/ (Press CTRL+C to quit)
  * Restarting with stat
  * Debugger is active!
@@ -835,11 +868,11 @@ True
 127.0.0.1 - - [04/May/2017 18:56:17] "POST /wishes HTTP/1.1" 200 -
 ```
 
-Yay, fine! `is_json` returns True.
+Yay, fine! `is_json` returns `True`.
 
-However, I'm a bit worried about the "content-type" based check. What if
-someone sends us a request with `application/json` `Content-Type` but without a
-real JSON object in data ? Or an invalid one? Let's try!
+However, I'm a bit worried about the `Content-Type`-based check. What if
+someone sends us a request with `application/json` as `Content-Type` but
+without a real JSON object in data? Or an invalid one? Let's try!
 
 ```
 $ curl -i -H "Content-Type: application/json" -X POST -d '{"name":"New keyboard' http://localhost:5000/wishes
@@ -877,7 +910,7 @@ to assert for parse-able json.
 
 Let's verify that.
 
-```
+```python
 @app.route('/wishes', methods=['POST'])
 def add_wish():
     print(request.json)
@@ -886,6 +919,7 @@ def add_wish():
 
 ```
 $ curl -i -H "Content-Type: application/json" -X POST -d '{"name":"New keyboard"}' http://localhost:5000/wishes
+
 HTTP/1.0 200 OK
 Content-Type: application/json
 Content-Length: 3
@@ -897,6 +931,7 @@ Date: Thu, 04 May 2017 17:02:42 GMT
 
 ```
 $ ./willish.py
+
  * Running on http://127.0.0.1:5000/ (Press CTRL+C to quit)
  * Restarting with stat
  * Debugger is active!
@@ -906,10 +941,12 @@ $ ./willish.py
 ```
 
 Ok so valid JSON works as expected.
-Let's try invalid JSON
+
+Let's try invalid JSON:
 
 ```
 $ curl -i -H "Content-Type: application/json" -X POST -d '{"name":"New keyboard' http://localhost:5000/wishes
+
 HTTP/1.0 400 BAD REQUEST
 Content-Type: text/html
 Content-Length: 203
@@ -924,6 +961,7 @@ Date: Thu, 04 May 2017 17:03:34 GMT
 
 ```
 $ ./willish.py
+
  * Running on http://127.0.0.1:5000/ (Press CTRL+C to quit)
  * Restarting with stat
  * Debugger is active!
@@ -932,26 +970,28 @@ $ ./willish.py
 ```
 
 Nice!
-However, once more, we're getting HTML body, just like for the 404 stuff. You
+However, once more, we're getting a HTML body, just like for the 404 stuff. You
 know how this ends up; let's override the handler for the 400 error !
 
 http://flask.pocoo.org/docs/0.12/errorhandling/#registering
 
 
-```
+```python
 @app.errorhandler(400)
 def bad_request(error):
     return make_response(jsonify({'error': 'Bad Request'}), 400)
 ```
 
-```
+```raw
 $ curl -i -H "Content-Type: application/json" -X POST -d '{"name":"New keyboard' http://localhost:5000/wishes
+
 HTTP/1.0 400 BAD REQUEST
 Content-Type: application/json
 Content-Length: 29
 Server: Werkzeug/0.12.1 Python/3.6.0
 Date: Thu, 04 May 2017 17:11:09 GMT
-
+```
+```json
 {
   "error": "Bad Request"
 }
@@ -974,8 +1014,9 @@ error details!
 Wait. Maybe this is because we run the app with `app.run(debug=False)` ? Let's
 try with `debug=True` and without our errorhandler.
 
-```
+```raw
 $ curl -i -H "Content-Type: application/json" -X POST -d '{"name":"New keyboard' http://localhost:5000/wishes
+
 HTTP/1.0 400 BAD REQUEST
 Content-Type: text/html
 Content-Length: 192
@@ -988,15 +1029,16 @@ Date: Thu, 04 May 2017 17:13:16 GMT
 <p>The browser (or proxy) sent a request that this server could not understand.</p>
 ```
 
-```
+```raw
 $ ./willish.py
+
  * Running on http://127.0.0.1:5000/ (Press CTRL+C to quit)
 127.0.0.1 - - [04/May/2017 19:14:28] "POST /wishes HTTP/1.1" 400 -
 
 ```
 
-Ok so the error is handled differently if the debug mode is enabled or not
-(makes sense).
+Ok so the error is handled differently if the debug mode is enabled or not,
+which makes sense.
 
 The difference can be found in the `flask/wrappers.py` file, line 167 :
 
@@ -1020,11 +1062,12 @@ def on_json_loading_failed(self, e):
 ```
 
 I actually have to thank JetBrain's PyCharm for finding this, the debugger with
-step-by-step run was immensely useful
+step-by-step run was immensely useful.
 
-Sooo, the BadRequest returned is directly modified when raised according to the
+So, the BadRequest returned is directly modified when raised according to the
 debug mode. So we actually will not to have to handle that by ourselves, cool
 :)
+
 Let's see how it goes :
 
 ```python
@@ -1035,14 +1078,16 @@ def bad_request(error):
 
 In `debug=False`:
 
-```
+```raw
 $ curl -i -H "Content-Type: application/json" -X POST -d '{"name":"New keyboard' http://localhost:5000/wishes
+
 HTTP/1.0 400 BAD REQUEST
 Content-Type: application/json
 Content-Length: 111
 Server: Werkzeug/0.12.1 Python/3.6.0
 Date: Thu, 04 May 2017 21:57:23 GMT
-
+```
+```json
 {
   "error": "400 Bad Request: The browser (or proxy) sent a request that this server could not understand."
 }
@@ -1051,14 +1096,16 @@ Date: Thu, 04 May 2017 21:57:23 GMT
 
 In `debug=True`:
 
-```
+```raw
 $ curl -i -H "Content-Type: application/json" -X POST -d '{"name":"New keyboard' http://localhost:5000/wishes
+
 HTTP/1.0 400 BAD REQUEST
 Content-Type: application/json
 Content-Length: 122
 Server: Werkzeug/0.12.1 Python/3.6.0
 Date: Thu, 04 May 2017 21:57:32 GMT
-
+```
+```json
 {
   "error": "400 Bad Request: Failed to decode JSON object: Unterminated string starting at: line 1 column 9 (char 8)"
 }
@@ -1070,15 +1117,15 @@ Exactly what we wanted!
 - JSON body in answer
 - Real error message, with details in debug mode
 
-let's do the same for the 404 error and transform
+Let's do the same for the 404 error and transform this:
 
-```
+```python
 @app.errorhandler(404)
 def not_found(error):
     return make_response(jsonify({'error': 'Not found'}), 404)
 ```
 
-in
+in that:
 
 ```python
 @app.errorhandler(404)
@@ -1086,7 +1133,7 @@ def not_found(error):
     return make_response(jsonify({'error': str(error)}), 404)
 ```
 
-So now instead of
+So now instead of:
 
 ```raw
 $ curl -i localhost:5000/wishes/4
@@ -1102,7 +1149,7 @@ Date: Thu, 04 May 2017 22:02:00 GMT
 }
 ```
 
-we get :
+we get:
 
 ```raw
 $ curl -i localhost:5000/wishes/4
@@ -3824,16 +3871,22 @@ TODO2 npm venv
 
 Note : .gitignore (idea and venv)
 
+# Summary
 
+So far...
 
+- We have a 3844 lines long README
+- ... for a 91 lines API (`willish.py`)
+- ... and 353 lines of tests (`tests/test.js`)
 
-
-
-# Future
+## Future
 
 Ok so. Until here, we had a poor "in memory database" with incremental integers
 as IDs.
 
 We *really* need to change this.
 
-At the beginning, I honestly planned to store everything in some Postgres
+At the beginning, I honestly planned to store everything in Postgresql to take
+the time to go through Python ORMs with SQLalchemy... but I'm quite not sure 
+I'll take this time since I would like this wish-list to be finished before 
+Christmas ;)
